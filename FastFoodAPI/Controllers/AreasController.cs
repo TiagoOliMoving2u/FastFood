@@ -25,7 +25,8 @@ namespace FastFoodAPI.Controllers
                 {
                     a.Id,
                     a.Name,
-                    a.Acronym
+                    a.Acronym,
+                    a.LastOrderNumber
                 })
                 .ToListAsync();
 
