@@ -27,6 +27,11 @@ namespace FastFoodAPI.Migrations
                         .HasMaxLength(1)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("LastOrderNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -44,12 +49,14 @@ namespace FastFoodAPI.Migrations
                         {
                             Id = 1,
                             Acronym = "S",
+                            LastOrderNumber = 0,
                             Name = "Sala"
                         },
                         new
                         {
                             Id = 2,
                             Acronym = "E",
+                            LastOrderNumber = 0,
                             Name = "Esplanada"
                         });
                 });

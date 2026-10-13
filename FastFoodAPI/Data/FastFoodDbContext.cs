@@ -33,6 +33,9 @@ namespace FastFoodAPI.Data
                 entity.HasIndex(a => a.Acronym)
                 .IsUnique();
 
+                entity.Property(a => a.LastOrderNumber)
+                .HasDefaultValue(0);  
+
                 entity.HasData                      //HasData() defines the two initial areas that will be inserted by the migration.
                 (
                     new Area
