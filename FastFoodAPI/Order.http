@@ -1,6 +1,1 @@
-POST https://localhost:7098/api/orders
-Content-Type: application/json
-
-{
-  "areaId": 1
-}
+GET https://localhost:7098/api/areas

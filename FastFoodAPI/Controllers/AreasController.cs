@@ -1,6 +1,5 @@
-﻿using FastFoodAPI.Data;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using FastFoodAPI.Repositories;
 
 namespace FastFoodAPI.Controllers
 {
@@ -8,27 +7,17 @@ namespace FastFoodAPI.Controllers
     [Route("api/areas")]
     public class AreasController : ControllerBase
     {
-        private FastFoodDbContext _context;
+        private readonly AreaRepository _areaRepository;
 
-        public AreasController(FastFoodDbContext context)
+        public AreasController(AreaRepository areaRepository)
         {
-            _context = context;
+            _areaRepository = areaRepository;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAreas() 
+        public async Task<IActionResult> GetAreas(CancellationToken cancellationToken) 
         {
-            var areas = await _context.Areas
-                .AsNoTracking()
-                .OrderBy(a => a.Id)
-                .Select(a => new
-                {
-                    a.Id,
-                    a.Name,
-                    a.Acronym,
-                    a.LastOrderNumber
-                })
-                .ToListAsync();
+            var areas = await _areaRepository.GetAllAreas(cancellationToken);
 
             return Ok(areas);
         }
