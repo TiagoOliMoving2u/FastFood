@@ -13,6 +13,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<SqlConnectionFactory>();
 
 builder.Services.AddScoped<AreaRepository>();
+builder.Services.AddScoped<OrderRepository>();
 
 // Entity Framework Core
 builder.Services.AddDbContext<FastFoodDbContext>(

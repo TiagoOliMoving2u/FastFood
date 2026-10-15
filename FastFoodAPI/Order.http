@@ -1,1 +1,5 @@
-GET https://localhost:7098/api/areas
+GET https://localhost:7098/api/Orders/44
+
+
+
+
