@@ -15,6 +15,119 @@ namespace FastFoodAPI.Repositories
             _factory = factory;
         }
 
+        // -----GETTERS-----
+        //method to get all orders with their area names
+        public async Task<IReadOnlyList<OrderResponse>> GetAllOrdersAsync(CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string query = """
+                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
+                FROM dbo.Orders o
+                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
+                ORDER BY o.Id;
+                """;
+
+            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(query, cancellationToken: cancellationToken));
+            return orders.AsList();
+        }
+
+        //method to get an order by its ID
+        public async Task<OrderResponse?> GetByIdAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string sqlGetOrderById = """
+                SELECT o.Id, O.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
+                FROM dbo.Orders o
+                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
+                Where o.Id = @OrderId;
+                """;
+
+            var order = await connection.QuerySingleOrDefaultAsync<OrderResponse>(new CommandDefinition(
+                sqlGetOrderById,
+                new { OrderId = orderId },
+
+                cancellationToken: cancellationToken
+                ));
+
+            if (order is not null)
+            {
+                order.CreatedOn = DateTime.SpecifyKind(order.CreatedOn, DateTimeKind.Utc);
+            }
+
+            return order;
+        }
+
+        // Method to get all orders filtered by areaId
+        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByAreaAsync(int areaId, CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string sqlGetOrdersByArea = """
+                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
+                From dbo.Orders o
+                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
+                WHERE o.AreaId = @AreaId;
+                """;
+
+            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
+                sqlGetOrdersByArea,
+                new { AreaId = areaId },
+                cancellationToken: cancellationToken
+                ));
+
+            return orders.AsList();
+        }
+
+        // Method to get all orders filtered by state
+        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByStateAsync(int state, CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string sqlGetOrdersByState = """
+                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
+                From dbo.Orders o
+                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
+                WHERE o.State = @State;
+                """;
+
+            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
+                sqlGetOrdersByState,
+                new { State = state },
+                cancellationToken: cancellationToken
+                ));
+
+            return orders.AsList();
+        }
+
+        // method to get all orders filtered by state and areaId
+        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByStateAndAreaAsync(int state, int areaId, CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string sqlGetOrdersByState = """
+                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
+                From dbo.Orders o
+                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
+                WHERE o.State = @State AND o.AreaId = @AreaId;
+                """;
+
+            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
+                sqlGetOrdersByState,
+                new { State = state, AreaId = areaId },
+                cancellationToken: cancellationToken
+                ));
+
+            return orders.AsList();
+        }
+
+        // -----POSTS-----
+        // Method to create a new order with a unique code based on the area acronym and the last order number
         public async Task<OrderResponse?> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
@@ -87,48 +200,6 @@ namespace FastFoodAPI.Repositories
 
             return order;
 
-        }
-
-        public async Task<IReadOnlyList<OrderResponse>> GetAllOrdersAsync(CancellationToken cancellationToken = default)
-        {
-            await using var connection = _factory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-            const string query = """
-                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
-                FROM dbo.Orders o
-                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
-                ORDER BY o.Id;
-                """;
-            
-            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(query, cancellationToken: cancellationToken));
-            return orders.AsList();
-        }
-
-        public async Task<OrderResponse?> GetByIdAsync(int orderId, CancellationToken cancellationToken = default)
-        {
-            await using var connection = _factory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            const string sqlGetOrderById = """
-                SELECT o.Id, O.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
-                FROM dbo.Orders o
-                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
-                Where o.Id = @OrderId;
-                """;
-
-            var order = await connection.QuerySingleOrDefaultAsync<OrderResponse>(new CommandDefinition(
-                sqlGetOrderById,
-                new { OrderId = orderId },
-
-                cancellationToken: cancellationToken
-                ));
-
-            if(order is not null)
-            {
-                order.CreatedOn = DateTime.SpecifyKind(order.CreatedOn, DateTimeKind.Utc);
-            }
-
-            return order;
         }
 
     }

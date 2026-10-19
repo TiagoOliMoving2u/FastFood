@@ -14,25 +14,7 @@ namespace FastFoodAPI.Controllers
             this.orderRepository = orderRepository;
         }
 
-        [HttpPost]
-        public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
-        {
-            if( request.AreaId <= 0)
-            {
-                return BadRequest("Invalid AreaId.");
-            }
-
-            var order = await orderRepository.CreateAsync(request, cancellationToken);
-
-            if (order is null)
-            {
-                return BadRequest("A área indicada não existe.");
-            }
-
-            return CreatedAtAction(nameof(GetNameById),
-                new { id = order.Id },
-                order);
-        }
+        //--- Get: api/orders
 
         [HttpGet]
         public async Task<IActionResult> GetOrders()
@@ -56,5 +38,49 @@ namespace FastFoodAPI.Controllers
             return Ok(order);
 
         }
+
+        [HttpGet("FiltredByArea/{areaId:int}")]
+        public async Task<IActionResult> GetOrdersByArea(int areaId, CancellationToken cancellationToken)
+        {
+            var orders = await orderRepository.GetOrdersByAreaAsync(areaId, cancellationToken);
+            return Ok(orders);
+        }
+
+        [HttpGet("FiltredByState/{state:int}")]
+        public async Task<IActionResult> GetOrdersByState(int state, CancellationToken cancellationToken)
+        {
+            var orders = await orderRepository.GetOrdersByStateAsync(state, cancellationToken);
+            return Ok(orders);
+        }
+
+        [HttpGet("FiltredByStateAndArea/{state:int}/{areaId:int}")]
+        public async Task<IActionResult> GetOrdersByStateAndArea(int state, int areaId, CancellationToken cancellationToken)
+        {
+            var orders = await orderRepository.GetOrdersByStateAndAreaAsync(state, areaId, cancellationToken);
+            return Ok(orders);
+        }
+
+        //--- Post: api/orders
+
+        [HttpPost]
+        public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
+        {
+            if( request.AreaId <= 0)
+            {
+                return BadRequest("Invalid AreaId.");
+            }
+
+            var order = await orderRepository.CreateAsync(request, cancellationToken);
+
+            if (order is null)
+            {
+                return BadRequest("A área indicada não existe.");
+            }
+
+            return CreatedAtAction(nameof(GetNameById),
+                new { id = order.Id },
+                order);
+        }
+
     }
 }
