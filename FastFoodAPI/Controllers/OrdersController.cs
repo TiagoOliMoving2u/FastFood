@@ -1,6 +1,7 @@
 ﻿using FastFoodAPI.DTOs;
-using Microsoft.AspNetCore.Mvc;
+using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FastFoodAPI.Controllers
 {
@@ -80,6 +81,40 @@ namespace FastFoodAPI.Controllers
             return CreatedAtAction(nameof(GetNameById),
                 new { id = order.Id },
                 order);
+        }
+
+        //--- Put: api/orders/{id}
+
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, CancellationToken cancellationToken)
+        {
+            if( id <= 0 )
+            {
+                return BadRequest("Invalid order ID.");
+            }
+
+            var order = await orderRepository.GetByIdAsync(id, cancellationToken);
+
+            if (order is null)
+            {
+                return NotFound();
+            }
+
+            var nextState = (OrderState)((int)order.State + 1);
+
+            if (!Enum.IsDefined(nextState))
+            {
+                return BadRequest("Order has no next state.");
+            }
+
+            var updatedOrder = await orderRepository.UpdateOrderStateAsync(id, nextState, cancellationToken);
+
+            if (updatedOrder is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(updatedOrder);
         }
 
     }

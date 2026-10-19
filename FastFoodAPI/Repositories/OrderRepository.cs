@@ -35,16 +35,17 @@ namespace FastFoodAPI.Repositories
         //method to get an order by its ID
         public async Task<OrderResponse?> GetByIdAsync(int orderId, CancellationToken cancellationToken = default)
         {
+            
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
-
+            
             const string sqlGetOrderById = """
                 SELECT o.Id, O.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
                 FROM dbo.Orders o
                 INNER JOIN dbo.Areas a ON o.AreaId = a.Id
                 Where o.Id = @OrderId;
                 """;
-
+            
             var order = await connection.QuerySingleOrDefaultAsync<OrderResponse>(new CommandDefinition(
                 sqlGetOrderById,
                 new { OrderId = orderId },
@@ -202,5 +203,41 @@ namespace FastFoodAPI.Repositories
 
         }
 
+        // -----UPDATES-----
+        // Method to update the state of an order
+        public async Task<OrderResponse?> UpdateOrderStateAsync(int orderId, OrderState newState, CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+            const string sqlUpdateOrderState = """
+                UPDATE dbo.Orders
+                SET State = @NewState
+                WHERE Id = @OrderId;
+                """;
+
+            var affectedRows = await connection.ExecuteAsync(new CommandDefinition(
+                sqlUpdateOrderState,
+                new { NewState = newState, OrderId = orderId },
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
+            if (affectedRows == 0)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+
+            var order = await GetByIdAsync(orderId, cancellationToken);
+
+            return order;
+        }
+
     }
 }
+
+

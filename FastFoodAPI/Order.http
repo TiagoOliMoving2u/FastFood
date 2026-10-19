@@ -1,4 +1,4 @@
-GET https://localhost:7098/api/Orders/FiltredByState/2
+PUT https://localhost:7098/api/Orders/2
 
 
 
