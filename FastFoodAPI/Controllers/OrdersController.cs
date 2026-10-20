@@ -21,7 +21,7 @@ namespace FastFoodAPI.Controllers
         public async Task<IActionResult> GetOrders()
         {
             var orders = await orderRepository.GetAllOrdersAsync();
-
+            if (orders == null) return NotFound();
             return Ok(orders);
         }
 
@@ -30,12 +30,7 @@ namespace FastFoodAPI.Controllers
         public async Task<ActionResult<OrderResponse>> GetNameById(int id, CancellationToken cancellationToken)
         {
             var order = await orderRepository.GetByIdAsync(id, cancellationToken);
-
-            if (order == null)
-            {
-                return NotFound();
-            }
-
+            if (order == null) return NotFound();
             return Ok(order);
 
         }
@@ -44,6 +39,7 @@ namespace FastFoodAPI.Controllers
         public async Task<IActionResult> GetOrdersByArea(int areaId, CancellationToken cancellationToken)
         {
             var orders = await orderRepository.GetOrdersByAreaAsync(areaId, cancellationToken);
+            if (orders == null) return NotFound();
             return Ok(orders);
         }
 
@@ -51,6 +47,7 @@ namespace FastFoodAPI.Controllers
         public async Task<IActionResult> GetOrdersByState(int state, CancellationToken cancellationToken)
         {
             var orders = await orderRepository.GetOrdersByStateAsync(state, cancellationToken);
+            if (orders == null) return NotFound();
             return Ok(orders);
         }
 
@@ -58,6 +55,7 @@ namespace FastFoodAPI.Controllers
         public async Task<IActionResult> GetOrdersByStateAndArea(int state, int areaId, CancellationToken cancellationToken)
         {
             var orders = await orderRepository.GetOrdersByStateAndAreaAsync(state, areaId, cancellationToken);
+            if (orders == null) return NotFound();
             return Ok(orders);
         }
 
@@ -107,7 +105,7 @@ namespace FastFoodAPI.Controllers
                 return BadRequest("Order has no next state.");
             }
 
-            var updatedOrder = await orderRepository.UpdateOrderStateAsync(id, nextState, cancellationToken);
+            var updatedOrder = await orderRepository.UpdateOrderStateAsync(id, order.State, nextState, cancellationToken);
 
             if (updatedOrder is null)
             {

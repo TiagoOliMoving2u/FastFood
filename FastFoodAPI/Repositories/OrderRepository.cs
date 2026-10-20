@@ -205,7 +205,7 @@ namespace FastFoodAPI.Repositories
 
         // -----UPDATES-----
         // Method to update the state of an order
-        public async Task<OrderResponse?> UpdateOrderStateAsync(int orderId, OrderState newState, CancellationToken cancellationToken = default)
+        public async Task<OrderResponse?> UpdateOrderStateAsync(int orderId,OrderState oldState,OrderState newState, CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
@@ -230,12 +230,31 @@ namespace FastFoodAPI.Repositories
                 return null;
             }
 
+            var sqlInsertOrderHistory = """
+                INSERT INTO dbo.StateHistory (OrderId, OldState, NewState)
+                VALUES (@OrderId, @OldState, @NewState);
+                """;
+
+            var historyAffectedRows = await connection.ExecuteAsync(new CommandDefinition(
+                sqlInsertOrderHistory,
+                new
+                {
+                    OrderId = orderId,
+                    OldState = oldState,
+                    NewState = newState,
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
             await transaction.CommitAsync(cancellationToken);
 
             var order = await GetByIdAsync(orderId, cancellationToken);
 
             return order;
         }
+
+
 
     }
 }
