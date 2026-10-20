@@ -196,6 +196,22 @@ namespace FastFoodAPI.Repositories
                 order.CreatedOn,
                 DateTimeKind.Utc);
 
+            var sqlInsertOrderHistory = """
+                INSERT INTO dbo.StateHistory (OrderId, NewState)
+                VALUES (@OrderId, @NewState);
+                """;
+
+            var historyAffectedRows = await connection.ExecuteAsync(new CommandDefinition(
+                sqlInsertOrderHistory,
+                new
+                {
+                    OrderId = order.Id,
+                    NewState = order.State,
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
             // 4. Confirmar a transação
             await transaction.CommitAsync(cancellationToken);
 
