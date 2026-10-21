@@ -3,6 +3,8 @@ using FastFoodAPI.Data;
 using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
 using System.Data;
+using System.Text;
+
 
 namespace FastFoodAPI.Repositories
 {
@@ -61,70 +63,105 @@ namespace FastFoodAPI.Repositories
             return order;
         }
 
-        // Method to get all orders filtered by areaId
-        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByAreaAsync(int areaId, CancellationToken cancellationToken = default)
+        // method to get orders filtered by areaId and/or state
+        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersFiltredAsync(
+            int? areaId = null,
+            int? state = null,
+            CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
 
-            const string sqlGetOrdersByArea = """
+            var sqlGetOrdersFiltred = new StringBuilder("""
                 SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
                 From dbo.Orders o
                 INNER JOIN dbo.Areas a ON o.AreaId = a.Id
-                WHERE o.AreaId = @AreaId;
-                """;
+                WHERE 1 = 1
+                """);
+
+            var parameters = new DynamicParameters();
+
+            if (areaId.HasValue)
+            {
+                sqlGetOrdersFiltred.AppendLine(" AND o.AreaId = @AreaId");
+                parameters.Add("@AreaId", areaId.Value);
+            }
+
+            if (state.HasValue)
+            {
+                sqlGetOrdersFiltred.AppendLine(" AND o.State = @State");
+                parameters.Add("@State", state.Value);
+            }
+
+            sqlGetOrdersFiltred.AppendLine(" ORDER BY o.Id;");
 
             var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
-                sqlGetOrdersByArea,
-                new { AreaId = areaId },
+                sqlGetOrdersFiltred.ToString(),
+                parameters,
                 cancellationToken: cancellationToken
-                ));
+            ));
 
             return orders.AsList();
+
         }
 
-        // Method to get all orders filtered by state
-        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByStateAsync(int state, CancellationToken cancellationToken = default)
+        //method to get the history of state changes for a specific order
+        public async Task<IReadOnlyList<StateHistoryResponse>> GetHistoryStateFiltredAsync(
+            int? orderId = null,
+            int? areaId = null,
+            int? oldState = null,
+            int? newState = null,
+            CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
 
-            const string sqlGetOrdersByState = """
-                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
-                From dbo.Orders o
-                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
-                WHERE o.State = @State;
-                """;
+            var sqlString = new StringBuilder("""
+                SELECT h.Id, h.OrderId,o.Code AS OrderCode, o.AreaId, a.Name AS AreaName, h.OldState, h.NewState, h.ChangedOn
+                FROM dbo.StateHistory h
+                INNER JOIN dbo.Orders o
+                    ON h.OrderId = o.Id
+                INNER JOIN dbo.Areas a
+                    ON o.AreaId = a.Id
+                WHERE 1 = 1
+                """);
 
-            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
-                sqlGetOrdersByState,
-                new { State = state },
+            var parameters = new DynamicParameters();
+
+            if (orderId.HasValue)
+            {
+                sqlString.AppendLine(" AND OrderId = @OrderId");
+                parameters.Add("@OrderId", orderId.Value);
+            }
+
+            if (areaId.HasValue)
+            {
+                sqlString.AppendLine(" AND AreaId = @AreaId");
+                parameters.Add("@AreaId", areaId.Value);
+            }
+
+            if (oldState.HasValue)
+            {
+                sqlString.AppendLine(" AND OldState = @OldState");
+                parameters.Add("@OldState", oldState.Value);
+            }
+
+            if (newState.HasValue)
+            {
+                sqlString.AppendLine(" AND NewState = @NewState");
+                parameters.Add("@NewState", newState.Value);
+            }
+
+            sqlString.AppendLine(" ORDER BY Id;");
+
+            var history = await connection.QueryAsync<StateHistoryResponse>(new CommandDefinition(
+                sqlString.ToString(),
+                parameters,
                 cancellationToken: cancellationToken
                 ));
 
-            return orders.AsList();
-        }
+            return history.AsList();
 
-        // method to get all orders filtered by state and areaId
-        public async Task<IReadOnlyList<OrderResponse?>> GetOrdersByStateAndAreaAsync(int state, int areaId, CancellationToken cancellationToken = default)
-        {
-            await using var connection = _factory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            const string sqlGetOrdersByState = """
-                SELECT o.Id, o.Code, o.AreaId, a.Name AS AreaName, o.State, o.CreatedOn
-                From dbo.Orders o
-                INNER JOIN dbo.Areas a ON o.AreaId = a.Id
-                WHERE o.State = @State AND o.AreaId = @AreaId;
-                """;
-
-            var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(
-                sqlGetOrdersByState,
-                new { State = state, AreaId = areaId },
-                cancellationToken: cancellationToken
-                ));
-
-            return orders.AsList();
         }
 
         // -----POSTS-----

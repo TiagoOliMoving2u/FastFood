@@ -18,9 +18,12 @@ namespace FastFoodAPI.Controllers
         //--- Get: api/orders
 
         [HttpGet]
-        public async Task<IActionResult> GetOrders()
+        public async Task<IActionResult> GetOrders(
+            [FromQuery] int? areaId = null,
+            [FromQuery] int? state = null,
+            CancellationToken cancellationToken = default)
         {
-            var orders = await orderRepository.GetAllOrdersAsync();
+            var orders = await orderRepository.GetOrdersFiltredAsync(areaId, state, cancellationToken);
             if (orders == null) return NotFound();
             return Ok(orders);
         }
@@ -35,28 +38,24 @@ namespace FastFoodAPI.Controllers
 
         }
 
-        [HttpGet("FiltredByArea/{areaId:int}")]
-        public async Task<IActionResult> GetOrdersByArea(int areaId, CancellationToken cancellationToken)
+        [HttpGet("StateHistory")]
+        public async Task<IActionResult> GetStateHistory(
+            [FromQuery] int? orderId = null,
+            [FromQuery] int? areaId = null,
+            [FromQuery] int? oldState = null,
+            [FromQuery] int? newState = null,
+            CancellationToken cancellationToken = default)
         {
-            var orders = await orderRepository.GetOrdersByAreaAsync(areaId, cancellationToken);
-            if (orders == null) return NotFound();
-            return Ok(orders);
-        }
+            if (orderId is <= 0 || areaId is <= 0)
+                return BadRequest("Invalid order or area ID.");
 
-        [HttpGet("FiltredByState/{state:int}")]
-        public async Task<IActionResult> GetOrdersByState(int state, CancellationToken cancellationToken)
-        {
-            var orders = await orderRepository.GetOrdersByStateAsync(state, cancellationToken);
-            if (orders == null) return NotFound();
-            return Ok(orders);
-        }
+            if (oldState is < 1 or > 4 ||
+                newState is < 1 or > 4)
+                return BadRequest("Invalid order state.");
 
-        [HttpGet("FiltredByStateAndArea/{state:int}/{areaId:int}")]
-        public async Task<IActionResult> GetOrdersByStateAndArea(int state, int areaId, CancellationToken cancellationToken)
-        {
-            var orders = await orderRepository.GetOrdersByStateAndAreaAsync(state, areaId, cancellationToken);
-            if (orders == null) return NotFound();
-            return Ok(orders);
+            var history = await orderRepository.GetHistoryStateFiltredAsync(orderId, areaId, oldState, newState, cancellationToken);
+            if (history == null) return NotFound();
+            return Ok(history);
         }
 
         //--- Post: api/orders
@@ -82,6 +81,7 @@ namespace FastFoodAPI.Controllers
         }
 
         //--- Put: api/orders/{id}
+
 
         [HttpPut("{id:int}")]
         public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, CancellationToken cancellationToken)

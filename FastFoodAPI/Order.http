@@ -1,4 +1,4 @@
-PUT https://localhost:7098/api/Orders/6
+GET https://localhost:7098/api/orders/StateHistory?orderId=6&newState=2
 
 
 
