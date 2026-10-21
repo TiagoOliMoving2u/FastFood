@@ -14,15 +14,7 @@ builder.Services.AddSingleton<SqlConnectionFactory>();
 
 builder.Services.AddScoped<AreaRepository>();
 builder.Services.AddScoped<OrderRepository>();
-
-// Entity Framework Core
-builder.Services.AddDbContext<FastFoodDbContext>(
-    options =>
-        options.UseSqlite(
-            builder.Configuration.GetConnectionString(
-                "DefaultConnection")
-        )
-);
+builder.Services.AddScoped<MenuItemRepository>();
 
 var app = builder.Build();
 
