@@ -1,6 +1,7 @@
 using FastFoodAPI.Data;
-using Microsoft.EntityFrameworkCore;
 using FastFoodAPI.Repositories;
+using FastFoodAPI.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddScoped<AreaRepository>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<MenuItemRepository>();
+builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();
 

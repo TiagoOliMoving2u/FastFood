@@ -1,6 +1,7 @@
 ﻿using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
+using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastFoodAPI.Controllers
@@ -9,10 +10,10 @@ namespace FastFoodAPI.Controllers
     [Route("api/orders")]
     public class OrdersController : ControllerBase
     {
-        private readonly OrderRepository orderRepository;
-        public OrdersController(OrderRepository orderRepository)
+        private readonly OrderService _orderService;
+        public OrdersController(OrderService orderService)
         {
-            this.orderRepository = orderRepository;
+            _orderService = orderService;
         }
 
         //--- Get: api/orders
@@ -23,19 +24,29 @@ namespace FastFoodAPI.Controllers
             [FromQuery] int? state = null,
             CancellationToken cancellationToken = default)
         {
-            var orders = await orderRepository.GetOrdersFiltredAsync(areaId, state, cancellationToken);
-            if (orders == null) return NotFound();
-            return Ok(orders);
+            try
+            {
+                var orders = await _orderService.GetOrdersAsyn(areaId, state, cancellationToken);
+                return Ok(orders);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<OrderResponse>> GetNameById(int id, CancellationToken cancellationToken)
+        public async Task<ActionResult<OrderResponse>> GetOrderById(int id, CancellationToken cancellationToken)
         {
-            var order = await orderRepository.GetByIdAsync(id, cancellationToken);
-            if (order == null) return NotFound();
-            return Ok(order);
-
+            try { 
+                var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
+                return Ok(order);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("StateHistory")]
@@ -46,16 +57,17 @@ namespace FastFoodAPI.Controllers
             [FromQuery] int? newState = null,
             CancellationToken cancellationToken = default)
         {
-            if (orderId is <= 0 || areaId is <= 0)
-                return BadRequest("Invalid order or area ID.");
+            try
+            {
+                var history = await _orderService.GetStateHistoryAsync(orderId, areaId, oldState, newState, cancellationToken);
+                if (history == null) return NotFound();
+                return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
 
-            if (oldState is < 1 or > 4 ||
-                newState is < 1 or > 4)
-                return BadRequest("Invalid order state.");
-
-            var history = await orderRepository.GetHistoryStateFiltredAsync(orderId, areaId, oldState, newState, cancellationToken);
-            if (history == null) return NotFound();
-            return Ok(history);
         }
 
         //--- Post: api/orders
@@ -63,21 +75,18 @@ namespace FastFoodAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
         {
-            if( request.AreaId <= 0)
+            try
             {
-                return BadRequest("Invalid AreaId.");
+                var order = await _orderService.CreateOrderAsync(request, cancellationToken);
+
+                return CreatedAtAction(nameof(GetOrderById),
+                    new { id = order.Id },
+                    order);
             }
-
-            var order = await orderRepository.CreateAsync(request, cancellationToken);
-
-            if (order is null)
+            catch (Exception ex)
             {
-                return BadRequest("A área indicada não existe.");
+                return BadRequest(new { message = ex.Message });
             }
-
-            return CreatedAtAction(nameof(GetNameById),
-                new { id = order.Id },
-                order);
         }
 
         //--- Put: api/orders/{id}
@@ -86,34 +95,16 @@ namespace FastFoodAPI.Controllers
         [HttpPut("{id:int}")]
         public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, CancellationToken cancellationToken)
         {
-            if( id <= 0 )
+            try
             {
-                return BadRequest("Invalid order ID.");
+                var updatedOrder = await _orderService.UpdateOrderAsync(id, cancellationToken);
+
+                return Ok(updatedOrder);
             }
-
-            var order = await orderRepository.GetByIdAsync(id, cancellationToken);
-
-            if (order is null)
+            catch (Exception ex)
             {
-                return NotFound();
+                return BadRequest(new { message = ex.Message });
             }
-
-            var nextState = (OrderState)((int)order.State + 1);
-
-            if (!Enum.IsDefined(nextState))
-            {
-                return BadRequest("Order has no next state.");
-            }
-
-            var updatedOrder = await orderRepository.UpdateOrderStateAsync(id, order.State, nextState, cancellationToken);
-
-            if (updatedOrder is null)
-            {
-                return NotFound();
-            }
-
-            return Ok(updatedOrder);
         }
-
     }
 }

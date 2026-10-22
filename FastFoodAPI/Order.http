@@ -1,4 +1,4 @@
-GET https://localhost:7098/api/MenuItems
+GET https://localhost:7098/api/orders?areaId=2
 
 
 

@@ -1,6 +1,8 @@
-﻿using FastFoodAPI.Data;
-using Dapper;
+﻿using Dapper;
+using FastFoodAPI.Data;
 using FastFoodAPI.DTOs;
+using System.Data.SqlTypes;
+using System.Text;
 namespace FastFoodAPI.Repositories
 {
     public class MenuItemRepository
@@ -12,12 +14,14 @@ namespace FastFoodAPI.Repositories
             _factory = factory;
         }
 
-        public async Task<IReadOnlyList<MenuItemResponse>> GetMenuItemsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<MenuItemResponse>> GetMenuItemsAsync(
+            int? id,
+            CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
 
-            const string query = """
+            var query = new StringBuilder("""
                 SELECT
                     m.Id,
                     m.Name,
@@ -27,11 +31,23 @@ namespace FastFoodAPI.Repositories
                     m.AvailableUnits
                 FROM dbo.MenuItems m
                 INNER JOIN dbo.Categories c
-                    ON m.CategoryId = c.Id;
-                """;
+                    ON m.CategoryId = c.Id
+                WHERE 1=1
+                """);
+
+            var parameters = new DynamicParameters();
+
+            if (id.HasValue)
+            {
+                query.AppendLine(" AND m.Id = @Id");
+                parameters.Add("@Id", id.Value);
+            }
+
+            query.AppendLine(" ORDER BY Id;");
 
             var items = await connection.QueryAsync<MenuItemResponse>(new CommandDefinition(
-                query, 
+                query.ToString(),
+                parameters,
                 cancellationToken: cancellationToken));
 
             return items.AsList();

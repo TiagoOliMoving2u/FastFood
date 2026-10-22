@@ -104,7 +104,7 @@ namespace FastFoodAPI.Repositories
             return orders.AsList();
 
         }
-
+        //getters history state
         //method to get the history of state changes for a specific order
         public async Task<IReadOnlyList<StateHistoryResponse>> GetHistoryStateFiltredAsync(
             int? orderId = null,
@@ -307,7 +307,7 @@ namespace FastFoodAPI.Repositories
             return order;
         }
 
-
+        
 
     }
 }
