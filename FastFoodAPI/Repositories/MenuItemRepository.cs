@@ -16,6 +16,7 @@ namespace FastFoodAPI.Repositories
 
         public async Task<IReadOnlyList<MenuItemResponse>> GetMenuItemsAsync(
             int? id,
+            int[]? ids,
             CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
@@ -41,6 +42,11 @@ namespace FastFoodAPI.Repositories
             {
                 query.AppendLine(" AND m.Id = @Id");
                 parameters.Add("@Id", id.Value);
+            }
+            else if (ids != null && ids.Length > 0)
+            {
+                query.AppendLine(" AND m.Id IN @Ids");
+                parameters.Add("@Ids", ids);
             }
 
             query.AppendLine(" ORDER BY Id;");

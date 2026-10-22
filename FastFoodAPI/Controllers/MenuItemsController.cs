@@ -17,14 +17,16 @@ namespace FastFoodAPI.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetMenuItems(
-            [FromBody] int? id = null,
+            [FromQuery] int? id = null,
+            [FromQuery] int[]? ids = null,
             CancellationToken cancellationToken = default)
         {
-            var menuItems = await menuItemRepository.GetMenuItemsAsync(id, cancellationToken);
-            if (menuItems == null)
-                return NotFound("No menu items found.");
+            var menuItems = await menuItemRepository.GetMenuItemsAsync(id, ids, cancellationToken);
+            
             return Ok(menuItems);
         }
+
+        
 
     }
 }

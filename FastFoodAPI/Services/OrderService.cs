@@ -105,7 +105,26 @@ namespace FastFoodAPI.Services
             {
                 request.Items.Remove(item); // Remove the duplicate items with zero quantity
             }
+            
+            var menuItemIds = request.Items.Select(i => i.Id).ToList();
 
+            var menuItems = await _menuItemRepository.GetMenuItemsAsync(null, menuItemIds?.ToArray(), cancellationToken);
+
+            if(menuItems.Count != menuItemIds.Count)
+            {
+                throw new ArgumentException("One or more MenuItemIds are invalid.");
+            }
+
+            foreach (var item in request.Items)
+            {
+                var menuItem = menuItems.FirstOrDefault(mi => mi.Id == item.Id);
+                if (menuItem is null)
+                    throw new ArgumentException($"MenuItem with ID {item.Id} does not exist.");
+                else if (item.Quantity > menuItem.AvailableUnits)
+                    throw new ArgumentException($"No enought units from {menuItem.Name}.");
+
+                item.Price = menuItem.Price;
+            }
 
             var order = await _orderRepository.CreateAsync(request, cancellationToken);
             //TODO: verificar

@@ -186,7 +186,7 @@ namespace FastFoodAPI.Repositories
                 WHERE Id = @AreaId;
                 """;
 
-            var area = await connection.QuerySingleAsync<Area>(new CommandDefinition(
+            var area = await connection.QuerySingleOrDefaultAsync<Area>(new CommandDefinition(
                     sqlIncrementCounterArea,
                     new { AreaId = request.AreaId },
                     transaction: transaction,
@@ -232,6 +232,52 @@ namespace FastFoodAPI.Repositories
             order.CreatedOn = DateTime.SpecifyKind(
                 order.CreatedOn,
                 DateTimeKind.Utc);
+
+            var sqlDecrementStock = """
+                UPDATE dbo.MenuItems
+                SET AvailableUnits = AvailableUnits - @Quantity
+                WHERE Id = @MenuItemId AND AvailableUnits >= @Quantity;
+                """;
+
+            foreach (var item in request.Items)
+            {
+                var affectedRows = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sqlDecrementStock,
+                    new
+                    {
+                        MenuItemId = item.Id,
+                        Quantity = item.Quantity
+                    },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken
+                ));
+
+                if (affectedRows != 1)
+                {
+                    throw new ArgumentException($"MenuItem with Id { item.Id} does not have enough available units to fulfill the order.");
+                }
+            }
+
+                var sqlInsertOrderItems = """
+                INSERT INTO dbo.OrderItems (OrderId, MenuItemId, Quantity, UnitPrice)
+                VALUES (@OrderId, @MenuItemId, @Quantity, @UnitPrice);
+                """;
+
+            var parameters = request.Items.Select(item => new
+            {
+                OrderId = order.Id,
+                MenuItemId = item.Id,
+                Quantity = item.Quantity,
+                UnitPrice = item.Price
+            });
+
+            var itemsAffectedRows = await connection.ExecuteAsync(new CommandDefinition(
+                sqlInsertOrderItems,
+                parameters,
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
 
             var sqlInsertOrderHistory = """
                 INSERT INTO dbo.StateHistory (OrderId, NewState)
