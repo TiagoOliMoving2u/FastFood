@@ -13,6 +13,10 @@ Accept: application/json
     {
       "id": 2,
       "quantity": 1
+    },
+    {
+      "id": 1,
+      "quantity": 1
     }
   ]
 }

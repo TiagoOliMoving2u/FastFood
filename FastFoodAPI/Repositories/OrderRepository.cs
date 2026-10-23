@@ -101,6 +101,39 @@ namespace FastFoodAPI.Repositories
                 cancellationToken: cancellationToken
             ));
 
+            if (orders is null)
+                return orders.AsList();
+
+            const string sqlGetOrderItems = """
+            SELECT
+                oi.Id,
+                oi.OrderId,
+                oi.MenuItemId,
+                mi.Name,
+                oi.Quantity,
+                oi.UnitPrice
+            FROM dbo.OrderItems oi
+            INNER JOIN dbo.MenuItems mi ON mi.Id = oi.MenuItemId
+            WHERE oi.OrderId IN @OrderIds;
+            """;
+
+            var orderIds = orders.Select(o => o.Id).ToArray();
+
+            var orderItems = await connection.QueryAsync<OrderItem>(
+                new CommandDefinition(
+                    sqlGetOrderItems,
+                    new { OrderIds = orderIds },
+                    cancellationToken: cancellationToken
+                )
+            );
+
+            var itemsByOrder = orderItems.ToLookup(i => i.OrderId);
+
+            foreach (var order in orders)
+            {
+                order.Items = itemsByOrder[order.Id].ToList();
+            }
+
             return orders.AsList();
 
         }
@@ -353,8 +386,59 @@ namespace FastFoodAPI.Repositories
             return order;
         }
 
-        
 
+        public async Task ResetAllAsync(
+        CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            
+            await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+            const string sqlResetOrderItems = """
+                DELETE FROM dbo.OrderItems;
+                """;
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                sqlResetOrderItems,
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
+            const string sqlResetStateHistory = """
+                DELETE FROM dbo.StateHistory;
+                """;
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                sqlResetStateHistory,
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
+            const string sqlResetOrders = """
+                DELETE FROM dbo.Orders;
+                """;
+
+            var affectedRowsOrders = await connection.ExecuteAsync(new CommandDefinition(
+                sqlResetOrders,
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
+            const string sqlResetAreas = """
+                UPDATE dbo.Areas
+                SET LastOrderNumber = 0;
+                """;
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                sqlResetAreas,
+                transaction: transaction,
+                cancellationToken: cancellationToken
+            ));
+
+            await transaction.CommitAsync(cancellationToken);
+
+        }
     }
 }
 

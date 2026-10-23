@@ -36,6 +36,8 @@ namespace FastFoodAPI.Services
                 throw new ArgumentException("Invalid order state.");
 
             var orders = await _orderRepository.GetOrdersFiltredAsync(areaId, state, cancellationToken);
+
+            
             return orders;
         }
 

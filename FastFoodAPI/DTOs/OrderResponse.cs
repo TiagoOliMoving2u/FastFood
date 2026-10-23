@@ -10,5 +10,6 @@ namespace FastFoodAPI.DTOs
         public string AreaName { get; set; } = "";
         public OrderState State { get; set; }
         public DateTime CreatedOn { get; set; } 
+        public IEnumerable<OrderItem> Items { get; set; } = new List<OrderItem>();
     }
 }
