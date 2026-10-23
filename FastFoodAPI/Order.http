@@ -1,22 +1,3 @@
 
-POST https://localhost:7098/api/orders
-Content-Type: application/json
-Accept: application/json
+GET https://localhost:7098/api/orders
 
-{
-  "areaId": 1,
-  "items": [
-    {
-      "id": 1,
-      "quantity": 2
-    },
-    {
-      "id": 2,
-      "quantity": 1
-    },
-    {
-      "id": 1,
-      "quantity": 1
-    }
-  ]
-}
