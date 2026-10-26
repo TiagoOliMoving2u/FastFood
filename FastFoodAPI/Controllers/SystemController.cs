@@ -1,5 +1,6 @@
 ﻿using FastFoodAPI.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FastFoodAPI.Controllers
 {
@@ -13,6 +14,7 @@ namespace FastFoodAPI.Controllers
             _orderRepository = orderRepository;
         }
 
+        [Authorize(Policy = "CanResetSystem")]
         [HttpPost("reset")]
         public async Task<IActionResult> ResetAllAsync(CancellationToken cancellationToken = default)
         {
