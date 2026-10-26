@@ -1,8 +1,18 @@
 
-POST https://localhost:7098/api/auth/login
+POST https://localhost:7098/api/orders
 Content-Type: application/json
+Accept: application/json
 
 {
-  "username": "supervisor",
-  "password": "#tOLI#2026#"
+  "areaId": 1,
+  "items": [
+    {
+      "id": 1,
+      "quantity": 2
+    },
+    {
+      "id": 2,
+      "quantity": 1
+    }
+  ]
 }

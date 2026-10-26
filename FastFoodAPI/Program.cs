@@ -93,7 +93,6 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -107,5 +106,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<OrdersHub>("/hubs/orders");
 
 app.Run();

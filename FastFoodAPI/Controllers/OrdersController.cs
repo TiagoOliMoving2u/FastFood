@@ -1,8 +1,9 @@
 ﻿using FastFoodAPI.DTOs;
+using FastFoodAPI.Hubs;
 using FastFoodAPI.Models;
-using FastFoodAPI.Repositories;
 using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FastFoodAPI.Controllers
 {
@@ -11,9 +12,12 @@ namespace FastFoodAPI.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly OrderService _orderService;
-        public OrdersController(OrderService orderService)
+        private readonly IHubContext<OrdersHub> _hubContext;
+        public OrdersController(OrderService orderService,
+            IHubContext<OrdersHub> hubContext)
         {
             _orderService = orderService;
+            _hubContext = hubContext;
         }
 
         //--- Get: api/orders
@@ -79,6 +83,15 @@ namespace FastFoodAPI.Controllers
             {
                 var order = await _orderService.CreateOrderAsync(request, cancellationToken);
 
+                if (_hubContext == null)
+                {
+                    return Conflict("Order state could not be created.");
+                }
+                    await _hubContext.Clients.All.SendAsync(
+                        "OrdersChanged",
+                        cancellationToken);
+                
+                
                 return CreatedAtAction(nameof(GetOrderById),
                     new { id = order.Id },
                     order);
@@ -98,6 +111,16 @@ namespace FastFoodAPI.Controllers
             try
             {
                 var updatedOrder = await _orderService.UpdateOrderAsync(id, cancellationToken);
+
+                if (updatedOrder is null)
+                {
+                    return Conflict("Order state could not be updated.");
+                }
+
+                await _hubContext.Clients.All.SendAsync(
+                        "OrdersChanged",
+                        cancellationToken);
+                
 
                 return Ok(updatedOrder);
             }

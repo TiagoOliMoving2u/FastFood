@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FastFoodAPI.Hubs
 {
-    public class OrdersHub
+    [Authorize]
+    public class OrdersHub : Hub
     {
     }
 }
