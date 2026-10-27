@@ -1,12 +1,18 @@
 ﻿@page "/dashboard"
 @using FastFoodDashboard.Models
 @using System.Net.Http.Json
+@using Microsoft.AspNetCore.SignalR.Client;@using Microsoft.AspNetCore.Hosting
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment HostEnvironment
 @inject IHttpClientFactory HttpClientFactory
+@implements IAsyncDisposable
+
 
 
 <PageTitle>Dashboard - Sala</PageTitle>
 
 <h1>Dashboard - Sala</h1>
+<p>SignalR: @connectionStatus</p>
 
 <button @onclick="LoadOrders" disabled="@loading">
     Atualizar pedidos
@@ -53,6 +59,12 @@
 @code {
     private List<OrderDto> orders = new();
 
+    private HubConnection? hubConnection;
+
+    private IDisposable? ordersChangedHandler;
+
+    private string connectionStatus = "A iniciar...";
+
     private bool loading;
     private string? error;
 
@@ -67,7 +79,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadOrders();
-        
+
     }
 
     private async Task LoadOrders()
@@ -95,6 +107,113 @@
         finally
         {
             loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        // Este teste com JWT manual é apenas para desenvolvimento
+        if (!HostEnvironment.IsDevelopment())
+        {
+            connectionStatus = "Autenticação não configurada.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var token = Configuration["SignalR:DevAccessToken"];
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            connectionStatus = "JWT de teste não configurado.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var apiBaseUrl = Configuration["Api:BaseUrl"]
+            ?? throw new InvalidOperationException(
+                "Endereço da API não configurado.");
+
+        var hubUrl = new Uri(
+            new Uri(apiBaseUrl),
+            "hubs/orders");
+
+        // Criar a ligação ao Hub
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl, options =>
+            {
+                options.AccessTokenProvider = () =>
+                    Task.FromResult<string?>(
+                        Configuration["SignalR:DevAccessToken"]);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Escutar as alterações de pedidos
+        ordersChangedHandler = hubConnection.On(
+            "OrdersChanged",
+            async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadOrders();
+                    StateHasChanged();
+                });
+            });
+
+        // Ligação temporariamente perdida
+        hubConnection.Reconnecting += _ =>
+            InvokeAsync(() =>
+            {
+                connectionStatus = "A reconectar...";
+                StateHasChanged();
+            });
+
+        // Ligação restabelecida
+        hubConnection.Reconnected += _ =>
+            InvokeAsync(async () =>
+            {
+                connectionStatus = "Ligado";
+
+                await LoadOrders();
+                StateHasChanged();
+            });
+
+        // Ligação terminada
+        hubConnection.Closed += _ =>
+            InvokeAsync(() =>
+            {
+                connectionStatus = "Desligado";
+                StateHasChanged();
+            });
+
+        try
+        {
+            await hubConnection.StartAsync();
+
+            connectionStatus = "Ligado";
+
+            // Sincronizar possíveis alterações desde o GET inicial
+            await LoadOrders();
+        }
+        catch (Exception ex)
+        {
+            connectionStatus =
+                $"Erro ao ligar: {ex.Message}";
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ordersChangedHandler?.Dispose();
+
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
         }
     }
 }
