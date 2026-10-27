@@ -1,0 +1,100 @@
+﻿@page "/dashboard"
+@using FastFoodDashboard.Models
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+
+
+<PageTitle>Dashboard - Sala</PageTitle>
+
+<h1>Dashboard - Sala</h1>
+
+<button @onclick="LoadOrders" disabled="@loading">
+    Atualizar pedidos
+</button>
+
+@if (loading)
+{
+    <p>A carregar pedidos...</p>
+}
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+<div class="dashboard-grid">
+    @foreach (var state in states)
+    {
+        var filteredOrders = orders
+            .Where(o => o.State == state.Id)
+            .ToList();
+
+        <section class="state-column">
+            <h3>@state.Name (@filteredOrders.Count)</h3>
+
+            @if (filteredOrders.Count == 0)
+            {
+                <p>Sem pedidos</p>
+            }
+            else
+            {
+                @foreach (var order in filteredOrders)
+                {
+                    <article class="order-card">
+                        <strong>@order.Code</strong>
+                        <p>@order.AreaName</p>
+                    </article>
+                }
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private List<OrderDto> orders = new();
+
+    private bool loading;
+    private string? error;
+
+    private readonly (int Id, string Name)[] states =
+    {
+        (1, "Pedido"),
+        (2, "Em curso"),
+        (3, "Aguarda levantamento"),
+        (4, "Entregue")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+        
+    }
+
+    private async Task LoadOrders()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            var client = HttpClientFactory
+                .CreateClient("FastFoodApi");
+
+            orders = await client
+                .GetFromJsonAsync<List<OrderDto>>(
+                    "api/orders?areaId=1")
+                ?? new List<OrderDto>();
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException ||
+            ex is TaskCanceledException ||
+            ex is System.Text.Json.JsonException)
+        {
+            error = "Não foi possível carregar os pedidos.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

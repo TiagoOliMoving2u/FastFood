@@ -4,7 +4,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "areaId": 1,
+  "areaId": 2,
   "items": [
     {
       "id": 1,

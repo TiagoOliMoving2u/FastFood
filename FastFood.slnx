@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="FastFoodAPI/FastFoodAPI.csproj" />
+  <Project Path="FastFoodDashboard/FastFoodDashboard.csproj" Id="36f964e0-d581-46e9-b2cd-619da06b7c93" />
   <Project Path="FastFoodSignalRTest/FastFoodSignalRTest.csproj" Id="6bcf5f92-72ca-4610-a8be-e2f6b26f1a0b" />
 </Solution>

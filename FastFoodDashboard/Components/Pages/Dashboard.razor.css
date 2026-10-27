@@ -1,0 +1,43 @@
+﻿
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.state-column {
+    background: #f3f4f6;
+    padding: 16px;
+    border-radius: 10px;
+    min-height: 280px;
+}
+
+    .state-column h3 {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+.order-card {
+    background: white;
+    padding: 16px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+    .order-card p {
+        margin: 5px 0 0;
+    }
+
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 550px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
