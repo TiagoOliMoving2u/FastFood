@@ -13,5 +13,10 @@
         public int State { get; set; }
 
         public DateTime CreatedOn { get; set; }
+
+        public List<OrderItemDto> Items { get; set; } = new List<OrderItemDto>();
+
+
     }
+ 
 }

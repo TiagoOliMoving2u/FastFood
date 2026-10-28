@@ -103,3 +103,17 @@
         overflow-y: auto;
     }
 }
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat( auto-fit, minmax(220px, 1fr) );
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.dashboard-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}

@@ -1,4 +1,4 @@
-﻿@page "/dashboard"
+﻿@page "/dashboard/{View?}"
 @using FastFoodDashboard.Models
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.SignalR.Client;@using Microsoft.AspNetCore.Hosting
@@ -9,54 +9,82 @@
 
 
 
-<PageTitle>Dashboard - Sala</PageTitle>
+<nav class="dashboard-nav">
+    <NavLink href="/dashboard/sala">Sala</NavLink>
+    <NavLink href="/dashboard/esplanada">Esplanada</NavLink>
+    <NavLink href="/dashboard/cozinha">Cozinha</NavLink>
+</nav>
 
-<h1>Dashboard - Sala</h1>
-<p>SignalR: @connectionStatus</p>
-
-<button @onclick="LoadOrders" disabled="@loading">
-    Atualizar pedidos
-</button>
-
-@if (loading)
+@if (dashboardConfig is null)
 {
-    <p>A carregar pedidos...</p>
+    <p>Dashboard não encontrado.</p>
 }
-
-@if (error is not null)
+else
 {
-    <p class="text-danger">@error</p>
-}
+    <PageTitle>@dashboardConfig.Title</PageTitle>
 
-<div class="dashboard-grid">
-    @foreach (var state in states)
+    <h1>@dashboardConfig.Title</h1>
+
+    <p>SignalR: @connectionStatus</p>
+
+    <button @onclick="LoadOrders" disabled="@loading">
+        Atualizar pedidos
+    </button>
+
+    @if (loading)
     {
-        var filteredOrders = orders
-            .Where(o => o.State == state.Id)
-            .ToList();
-
-        <section class="state-column">
-            <h3>@state.Name (@filteredOrders.Count)</h3>
-
-            @if (filteredOrders.Count == 0)
-            {
-                <p>Sem pedidos</p>
-            }
-            else
-            {
-                @foreach (var order in filteredOrders)
-                {
-                    <article class="order-card">
-                        <strong>@order.Code</strong>
-                        <p>@order.AreaName</p>
-                    </article>
-                }
-            }
-        </section>
+        <p>A carregar pedidos...</p>
     }
-</div>
+
+    @if (error is not null)
+    {
+        <p class="text-danger">@error</p>
+    }
+
+    <div class="dashboard-grid">
+        @foreach (var state in VisibleStates)
+        {
+            var filteredOrders = orders
+                .Where(o => o.State == state.Id)
+                .ToList();
+
+            <section class="state-column">
+                <h3>@state.Name (@filteredOrders.Count)</h3>
+
+                @if (filteredOrders.Count == 0)
+                {
+                    <p>Sem pedidos</p>
+                }
+                else
+                {
+                    @foreach (var order in filteredOrders)
+                    {
+                        <article class="order-card">
+                            <strong>@order.Code</strong>
+
+                            @if (dashboardConfig.ShowAreaName)
+                            {
+                                <p>@order.AreaName</p>
+                            }
+                            @foreach (var item in order.Items){
+                                
+                                <p>@item.ToString()</p>
+                            }
+                            
+                        </article>
+                    }
+                }
+            </section>
+        }
+    </div>
+}
 
 @code {
+    [Parameter]
+    public string? View { get; set; }
+
+    private DashboardConfig? dashboardConfig;
+
     private List<OrderDto> orders = new();
 
     private HubConnection? hubConnection;
@@ -68,6 +96,56 @@
     private bool loading;
     private string? error;
 
+    private IEnumerable<(int Id, string Name)> VisibleStates =>
+    states.Where(s => dashboardConfig?.VisibleStates.Contains(s.Id) == true);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var selectedView = (View ?? "sala")
+            .Trim()
+            .ToLowerInvariant();
+
+        dashboardConfig = selectedView switch
+        {
+            "sala" => new DashboardConfig
+            {
+                Title = "Dashboard - Sala",
+                AreaId = 1,
+                VisibleStates = [1, 2, 3, 4],
+                ShowAreaName = false
+            },
+
+            "esplanada" => new DashboardConfig
+            {
+                Title = "Dashboard - Esplanada",
+                AreaId = 2,
+                VisibleStates = [1, 2, 3, 4],
+                ShowAreaName = false
+            },
+
+            "cozinha" => new DashboardConfig
+            {
+                Title = "Dashboard - Cozinha",
+                AreaId = null,
+                VisibleStates = [1, 2],
+                ShowAreaName = true
+            },
+
+            _ => null
+        };
+
+        orders.Clear();
+        error = null;
+
+        if (dashboardConfig is null)
+        {
+            error = "Dashboard não encontrado.";
+            return;
+        }
+
+        await LoadOrders();
+    }
+
     private readonly (int Id, string Name)[] states =
     {
         (1, "Pedido"),
@@ -76,14 +154,13 @@
         (4, "Entregue")
     };
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadOrders();
-
-    }
-
     private async Task LoadOrders()
     {
+        var config = dashboardConfig;
+
+        if (config is null)
+            return;
+
         loading = true;
         error = null;
 
@@ -92,17 +169,28 @@
             var client = HttpClientFactory
                 .CreateClient("FastFoodApi");
 
-            orders = await client
-                .GetFromJsonAsync<List<OrderDto>>(
-                    "api/orders?areaId=1")
+            string endpoint = config.AreaId.HasValue
+                ? $"api/orders?areaId={config.AreaId.Value}"
+                : "api/orders";
+
+            var result = await client
+                .GetFromJsonAsync<List<OrderDto>>(endpoint)
                 ?? new List<OrderDto>();
+
+            if (ReferenceEquals(dashboardConfig, config))
+            {
+                orders = result;
+            }
         }
         catch (Exception ex) when (
             ex is HttpRequestException ||
             ex is TaskCanceledException ||
             ex is System.Text.Json.JsonException)
         {
-            error = "Não foi possível carregar os pedidos.";
+            if (ReferenceEquals(dashboardConfig, config))
+            {
+                error = "Não foi possível carregar os pedidos.";
+            }
         }
         finally
         {
@@ -216,4 +304,5 @@
             await hubConnection.DisposeAsync();
         }
     }
+
 }
