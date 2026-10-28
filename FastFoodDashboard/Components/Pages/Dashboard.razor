@@ -70,7 +70,12 @@ else
                                 
                                 <p>@item.ToString()</p>
                             }
-                            
+
+                            @if (dashboardConfig.Title == "Dashboard - Cozinha")
+                            {
+                            <button @onclick="() => NextState(order.Id)">Avançar</button>
+                            }
+
                         </article>
                     }
                 }
@@ -125,7 +130,7 @@ else
 
             "cozinha" => new DashboardConfig
             {
-                Title = "Dashboard - Cozinha",
+    Title = "Dashboard - Cozinha",
                 AreaId = null,
                 VisibleStates = [1, 2],
                 ShowAreaName = true
@@ -153,6 +158,30 @@ else
         (3, "Aguarda levantamento"),
         (4, "Entregue")
     };
+
+    private async Task NextState(int id)
+    {
+        error = null;
+        try
+        {
+            var client = HttpClientFactory
+                .CreateClient("FastFoodApi");
+
+            string endpoint = "api/orders/" + id;
+
+            var result = await client
+                .PutAsync(endpoint,null);
+
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException ||
+            ex is TaskCanceledException ||
+            ex is System.Text.Json.JsonException)
+        {
+            error = ex.Message;   
+        }
+        
+    }
 
     private async Task LoadOrders()
     {

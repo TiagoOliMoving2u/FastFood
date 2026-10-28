@@ -1,2 +1,11 @@
 
-PUT https://localhost:7098/api/orders/20
+POST https://localhost:7098/api/auth/login
+Content-Type: application/json
+Accept: application/json
+{
+
+  "username": "supervisor",
+
+  "password": "#tOLI#2026#"
+
+}
