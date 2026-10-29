@@ -1,0 +1,180 @@
+﻿@page "/cliente"
+@using FastFoodDashboard.Models
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Cliente</PageTitle>
+
+<h1>Fazer Pedido</h1>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+@if (loading)
+{
+    <p>A carregar o menu...</p>
+}
+else
+{
+    <label>Escolha a área:</label>
+
+    <select @bind="selectedAreaId">
+        <option value="0">Selecionar área</option>
+        @foreach (var area in areas)
+        {
+            <option value="@area.Id">@area.Name</option>
+        }
+    </select>
+
+    <h3>Menu</h3>
+
+    @foreach (var selection in selections)
+    {
+        <div class="mb-3" @key="selection.Item.Id">
+            <strong>@selection.Item.Name</strong>
+
+            <p>@selection.Item.Description</p>
+
+            <p>Preço: @selection.Item.Price.ToString("N2") €</p>
+
+            <p>Disponiveis @(selection.Item.AvailableUnits - selection.Quantity)</p>
+
+            <input type="number"
+                   min="0"
+                   max="@selection.Item.AvailableUnits"
+                   @bind="selection.Quantity" />
+
+        </div>
+    }
+    <h3>Total estimado: @Total.ToString("N2") €</h3>
+
+    <button onclick="@CreateOrderAsync">Confirmar</button>
+}
+@code {
+    private List<AreaDto> areas = new();
+    private List<MenuItemSelection> selections = new();
+
+    private int selectedAreaId = 0;
+
+    private bool loading = true;
+    private string? error;
+
+    private bool submitting = false;
+    private string? success;
+
+    private decimal Total =>
+        selections.Sum(s => s.Item.Price * s.Quantity);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("FastFoodApi");
+
+            areas = await client.GetFromJsonAsync<List<AreaDto>>("api/areas")
+            ?? new();
+
+            var menu = await client.GetFromJsonAsync<List<MenuItemDto>>("api/MenuItems")
+            ?? new();
+
+            selections = menu.Select(item => new MenuItemSelection
+                {
+                    Item = item,
+                    Quantity = 0
+                }).ToList();
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar os dados: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task CreateOrderAsync()
+    {
+        if (submitting)
+            return;
+
+        error = null;
+        success = null;
+
+        if (!areas.Any(a => a.Id == selectedAreaId))
+        {
+            error = "Seleciona uma área.";
+            return;
+        }
+
+        if (selections.Any(s =>
+            s.Quantity < 0 ||
+            s.Quantity > s.Item.AvailableUnits))
+        {
+            error = "Verifica as quantidades escolhidas.";
+            return;
+        }
+
+        var selectedItems = selections
+            .Where(s => s.Quantity > 0)
+            .Select(s => new
+            {
+                Id = s.Item.Id,
+                Quantity = s.Quantity
+            })
+            .ToList();
+
+        if (selectedItems.Count == 0)
+        {
+            error = "Seleciona pelo menos um artigo.";
+            return;
+        }
+
+        submitting = true;
+
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("FastFoodApi");
+
+            var request = new
+            {
+                AreaId = selectedAreaId,
+                Items = selectedItems
+            };
+
+            using var response = await client.PostAsJsonAsync(
+                "api/orders",
+                request);
+
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = $"Erro ao criar pedido: HTTP " +
+                        $"{(int)response.StatusCode}";
+                return;
+            }
+
+            success = "Pedido criado com sucesso!";
+
+            foreach (var selection in selections)
+            {
+                selection.Quantity = 0;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            error = "A operação demorou demasiado tempo.";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}
