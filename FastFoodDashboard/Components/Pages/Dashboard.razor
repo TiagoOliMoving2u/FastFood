@@ -13,6 +13,7 @@
     <NavLink href="/dashboard/sala">Sala</NavLink>
     <NavLink href="/dashboard/esplanada">Esplanada</NavLink>
     <NavLink href="/dashboard/cozinha">Cozinha</NavLink>
+    <NavLink href="/dashboard/balcão">Balcão</NavLink>
 </nav>
 
 @if (dashboardConfig is null)
@@ -144,7 +145,15 @@ else
                 CanAdvanceOrders = [1, 2],
                 CanReturnOrders = [2, 3]
             },
-
+            "balcão" => new DashboardConfig
+            {
+                Title = "Dashboard - Balcão",
+                AreaId = null,
+                VisibleStates = [1, 2, 3, 4],
+                ShowAreaName = true,
+                CanAdvanceOrders = [3],
+                CanReturnOrders = [4]
+            },
             _ => null
         };
 
