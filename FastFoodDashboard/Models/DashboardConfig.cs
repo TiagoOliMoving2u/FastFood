@@ -9,5 +9,9 @@
         public int[] VisibleStates { get; set; } = [];
 
         public bool ShowAreaName { get; set; }
+
+        public int[] CanAdvanceOrders { get; set; } = [];
+
+        public int[] CanReturnOrders { get; set; } = [];
     }
 }

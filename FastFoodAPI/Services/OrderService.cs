@@ -140,12 +140,15 @@ namespace FastFoodAPI.Services
 
         //PUTs (atualziar)
 
-        public async Task<OrderResponse> UpdateOrderAsync(int id, CancellationToken cancellationToken)
+        public async Task<OrderResponse> UpdateOrderAsync(int id, int operation,CancellationToken cancellationToken)
         {
             if (id <= 0)
             {
                 throw new ArgumentException("Invalid order ID.");
             }
+
+            if (operation != -1 && operation != 1)
+                throw new ArgumentException("State just can increment or decrement 1 unit each time.");
 
             var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
 
@@ -154,7 +157,7 @@ namespace FastFoodAPI.Services
                 throw new ArgumentException("Order not found.");
             }
 
-            var nextState = (OrderState)((int)order.State + 1);
+            var nextState = (OrderState)((int)order.State + operation);
 
             if (!Enum.IsDefined(nextState))
             {
@@ -170,5 +173,7 @@ namespace FastFoodAPI.Services
 
             return updatedOrder;
         }
+
+        
     }
 }

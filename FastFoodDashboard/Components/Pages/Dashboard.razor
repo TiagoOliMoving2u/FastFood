@@ -71,9 +71,14 @@ else
                                 <p>@item.ToString()</p>
                             }
 
-                            @if (dashboardConfig.Title == "Dashboard - Cozinha")
+                            @if (dashboardConfig.CanReturnOrders.Contains(order.State))
                             {
-                            <button @onclick="() => NextState(order.Id)">Avançar</button>
+                                <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
+                            }
+
+                            @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
+                            {
+                            <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
                             }
 
                         </article>
@@ -117,7 +122,8 @@ else
                 Title = "Dashboard - Sala",
                 AreaId = 1,
                 VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false
+                ShowAreaName = false,
+                CanAdvanceOrders = []
             },
 
             "esplanada" => new DashboardConfig
@@ -125,15 +131,18 @@ else
                 Title = "Dashboard - Esplanada",
                 AreaId = 2,
                 VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false
+                ShowAreaName = false,
+                CanAdvanceOrders = []
             },
 
             "cozinha" => new DashboardConfig
             {
-    Title = "Dashboard - Cozinha",
+                Title = "Dashboard - Cozinha",
                 AreaId = null,
-                VisibleStates = [1, 2],
-                ShowAreaName = true
+                VisibleStates = [1, 2, 3],
+                ShowAreaName = true,
+                CanAdvanceOrders = [1, 2],
+                CanReturnOrders = [2, 3]
             },
 
             _ => null
@@ -159,7 +168,7 @@ else
         (4, "Entregue")
     };
 
-    private async Task NextState(int id)
+    private async Task NextState(int id, int operation)
     {
         error = null;
         try
@@ -167,18 +176,29 @@ else
             var client = HttpClientFactory
                 .CreateClient("FastFoodApi");
 
-            string endpoint = "api/orders/" + id;
+            string endpoint = $"api/orders/{id}?operation={operation}";
 
             var result = await client
                 .PutAsync(endpoint,null);
 
+            if (!result.IsSuccessStatusCode)
+            {
+                var errorMessage = await result.Content.ReadAsStringAsync();
+
+                error = $"Erro ao atualizar o pedido: " +
+                        $"{(int)result.StatusCode} - {errorMessage}";
+
+                return;
+            }
+
         }
-        catch (Exception ex) when (
-            ex is HttpRequestException ||
-            ex is TaskCanceledException ||
-            ex is System.Text.Json.JsonException)
+        catch (HttpRequestException ex)
         {
-            error = ex.Message;   
+            error = $"Erro de comunicação com a API: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            error = "A operação demorou demasiado tempo.";
         }
         
     }

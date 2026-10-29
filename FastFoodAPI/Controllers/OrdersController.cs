@@ -98,6 +98,7 @@ namespace FastFoodAPI.Controllers
             }
             catch (Exception ex)
             {
+
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -106,11 +107,11 @@ namespace FastFoodAPI.Controllers
 
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, CancellationToken cancellationToken)
+        public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromQuery] int operation,CancellationToken cancellationToken)
         {
             try
             {
-                var updatedOrder = await _orderService.UpdateOrderAsync(id, cancellationToken);
+                var updatedOrder = await _orderService.UpdateOrderAsync(id, operation,cancellationToken);
 
                 if (updatedOrder is null)
                 {
@@ -128,6 +129,7 @@ namespace FastFoodAPI.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-        }
+        } 
+
     }
 }
