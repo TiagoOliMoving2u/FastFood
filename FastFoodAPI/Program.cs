@@ -89,6 +89,14 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
         policy.RequireRole("KitchenSupervisor");
     });
+
+    options.AddPolicy("CanUpdateOrders", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Kitchen",
+                            "Counter",
+                            "KitchenSupervisor");
+    });
 });
 
 var app = builder.Build();

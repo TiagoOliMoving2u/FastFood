@@ -2,6 +2,7 @@
 using FastFoodAPI.Hubs;
 using FastFoodAPI.Models;
 using FastFoodAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -108,7 +109,7 @@ namespace FastFoodAPI.Controllers
 
         //--- Put: api/orders/{id}
 
-
+        [Authorize(Policy = "CanUpdateOrders")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromQuery] int operation,CancellationToken cancellationToken)
         {
