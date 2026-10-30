@@ -50,7 +50,15 @@ else
     }
     <h3>Total estimado: @Total.ToString("N2") €</h3>
 
-    <button onclick="@CreateOrderAsync">Confirmar</button>
+    <button onclick="@CreateOrderAsync"
+            disabled="@(loading || submitting)">
+        @(submitting ? "A enviar..." : "Confirmar pedido")
+    </button>
+
+    @if (success is not null)
+    {
+        <p class="text-success">@success</p>
+    }
 }
 @code {
     private List<AreaDto> areas = new();
