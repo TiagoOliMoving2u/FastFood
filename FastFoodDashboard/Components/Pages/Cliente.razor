@@ -1,7 +1,12 @@
 ﻿@page "/cliente"
-@using FastFoodDashboard.Models
 @using System.Net.Http.Json
+@using FastFoodDashboard.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Hosting
+@inject IWebHostEnvironment HostEnvironment
+@inject IConfiguration Configuration
 @inject IHttpClientFactory HttpClientFactory
+@implements IAsyncDisposable
 
 <PageTitle>Cliente</PageTitle>
 
@@ -39,7 +44,14 @@ else
 
             <p>Preço: @selection.Item.Price.ToString("N2") €</p>
 
-            <p>Disponiveis @(selection.Item.AvailableUnits - selection.Quantity)</p>
+            <p>Disponiveis @selection.Item.AvailableUnits</p>
+
+            @if (selection.Quantity > selection.Item.AvailableUnits)
+            {
+                <p class="text-danger">
+                    Quantidade superior ao stock disponível.
+                </p>
+            }
 
             <input type="number"
                    min="0"
@@ -50,7 +62,7 @@ else
     }
     <h3>Total estimado: @Total.ToString("N2") €</h3>
 
-    <button onclick="@CreateOrderAsync"
+    <button @onclick="CreateOrderAsync"
             disabled="@(loading || submitting)">
         @(submitting ? "A enviar..." : "Confirmar pedido")
     </button>
@@ -72,10 +84,19 @@ else
     private bool submitting = false;
     private string? success;
 
+    private IDisposable? ordersCreatedHandler;
+    private string connectionStatus = "A iniciar...";
+    private HubConnection? hubConnection;
+
     private decimal Total =>
         selections.Sum(s => s.Item.Price * s.Quantity);
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadMenuItem();
+    }
+
+    private async Task LoadMenuItem()
     {
         try
         {
@@ -87,11 +108,15 @@ else
             var menu = await client.GetFromJsonAsync<List<MenuItemDto>>("api/MenuItems")
             ?? new();
 
+            var quantities = selections.ToDictionary(
+                s => s.Item.Id,
+                s => s.Quantity);
+            
             selections = menu.Select(item => new MenuItemSelection
-                {
-                    Item = item,
-                    Quantity = 0
-                }).ToList();
+            {
+                Item = item,
+                Quantity = quantities.GetValueOrDefault(item.Id)
+            }).ToList();
         }
         catch (HttpRequestException ex)
         {
@@ -101,6 +126,103 @@ else
         {
             loading = false;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        // Este teste com JWT manual é apenas para desenvolvimento
+        if (!HostEnvironment.IsDevelopment())
+        {
+            connectionStatus = "Autenticação não configurada.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var token = Configuration["SignalR:DevAccessToken"];
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            connectionStatus = "JWT de teste não configurado.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var apiBaseUrl = Configuration["Api:BaseUrl"]
+            ?? throw new InvalidOperationException(
+                "Endereço da API não configurado.");
+
+        var hubUrl = new Uri(
+            new Uri(apiBaseUrl),
+            "hubs/orders");
+
+        // Criar a ligação ao Hub
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl, options =>
+            {
+                options.AccessTokenProvider = () =>
+                    Task.FromResult<string?>(
+                        Configuration["SignalR:DevAccessToken"]);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Escutar as alterações de pedidos
+        ordersCreatedHandler = hubConnection.On(
+            "CreatedNewOrder",
+            async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadMenuItem();
+                    StateHasChanged();
+                });
+            });
+
+        // Ligação temporariamente perdida
+        hubConnection.Reconnecting += _ =>
+            InvokeAsync(() =>
+            {
+                connectionStatus = "A reconectar...";
+                StateHasChanged();
+            });
+
+        // Ligação restabelecida
+        hubConnection.Reconnected += _ =>
+            InvokeAsync(async () =>
+            {
+                connectionStatus = "Ligado";
+
+                await LoadMenuItem();
+                StateHasChanged();
+            });
+
+        // Ligação terminada
+        hubConnection.Closed += _ =>
+            InvokeAsync(() =>
+            {
+                connectionStatus = "Desligado";
+                StateHasChanged();
+            });
+
+        try
+        {
+            await hubConnection.StartAsync();
+
+            connectionStatus = "Ligado";
+
+            // Sincronizar possíveis alterações desde o GET inicial
+            await LoadMenuItem();
+        }
+        catch (Exception ex)
+        {
+            connectionStatus =
+                $"Erro ao ligar: {ex.Message}";
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task CreateOrderAsync()
@@ -183,6 +305,16 @@ else
         finally
         {
             submitting = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ordersCreatedHandler?.Dispose();
+
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
         }
     }
 }

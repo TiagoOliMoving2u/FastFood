@@ -90,8 +90,11 @@ namespace FastFoodAPI.Controllers
                     await _hubContext.Clients.All.SendAsync(
                         "OrdersChanged",
                         cancellationToken);
-                
-                
+
+                    await _hubContext.Clients.All.SendAsync(
+                        "CreatedNewOrder",
+                        cancellationToken);
+
                 return CreatedAtAction(nameof(GetOrderById),
                     new { id = order.Id },
                     order);
