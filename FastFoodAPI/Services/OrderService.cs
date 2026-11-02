@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using FastFoodAPI.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Dapper;
+using System.Security.Claims;
+using System.Security.Claims;
 
 namespace FastFoodAPI.Services
 {
@@ -140,7 +142,11 @@ namespace FastFoodAPI.Services
 
         //PUTs (atualziar)
 
-        public async Task<OrderResponse> UpdateOrderAsync(int id, int operation,CancellationToken cancellationToken)
+        public async Task<OrderResponse> UpdateOrderAsync(
+            int id,
+            int operation,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken)
         {
             if (id <= 0)
             {
@@ -163,6 +169,27 @@ namespace FastFoodAPI.Services
             {
                 throw new ArgumentException("Order has no next state.");
             }
+
+            bool kitchenTransition =
+                (operation == 1 && ((int)order.State == 1 || (int)order.State == 2))
+                ||
+                (operation == -1 && ((int)order.State == 2 || (int)order.State == 3));
+
+            bool counterTransition =
+                (operation == 1 && (int)order.State == 3)
+                ||
+                (operation == -1 && (int)order.State == 4);
+
+            bool allowed =
+                (user.IsInRole("Kitchen") && kitchenTransition)
+                ||
+                (user.IsInRole("Counter") && counterTransition)
+                ||
+                (user.IsInRole("KitchenSupervisor")
+                    && (kitchenTransition || counterTransition));
+
+            if (!allowed)
+                throw new UnauthorizedAccessException("User is not authorized to update this order.");
 
             var updatedOrder = await _orderRepository.UpdateOrderStateAsync(id, order.State, nextState, cancellationToken);
 

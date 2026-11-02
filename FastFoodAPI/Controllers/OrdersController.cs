@@ -115,7 +115,11 @@ namespace FastFoodAPI.Controllers
         {
             try
             {
-                var updatedOrder = await _orderService.UpdateOrderAsync(id, operation,cancellationToken);
+                var updatedOrder = await _orderService.UpdateOrderAsync(
+                    id,
+                    operation,
+                    User,
+                    cancellationToken);
 
                 if (updatedOrder is null)
                 {
@@ -128,6 +132,10 @@ namespace FastFoodAPI.Controllers
                 
 
                 return Ok(updatedOrder);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
             }
             catch (Exception ex)
             {

@@ -346,12 +346,13 @@ namespace FastFoodAPI.Repositories
             const string sqlUpdateOrderState = """
                 UPDATE dbo.Orders
                 SET State = @NewState
-                WHERE Id = @OrderId;
+                WHERE Id = @OrderId
+                AND State = @ExpectedState;
                 """;
 
             var affectedRows = await connection.ExecuteAsync(new CommandDefinition(
                 sqlUpdateOrderState,
-                new { NewState = newState, OrderId = orderId },
+                new { NewState = newState, OrderId = orderId, ExpectedState = oldState },
                 transaction: transaction,
                 cancellationToken: cancellationToken
             ));

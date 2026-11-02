@@ -4,8 +4,8 @@ Content-Type: application/json
 Accept: application/json
 {
 
-  "username": "supervisor",
+  "username": "cozinha",
 
-  "password": "#tOLI#2026#"
+  "password": "PASSWORD_DE_TESTE_1"
 
 }

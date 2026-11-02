@@ -42,15 +42,21 @@ public class AuthController : ControllerBase
             return NotFound();
         }
 
-        var username = _configuration["DevAuth:Username"];
-        var password = _configuration["DevAuth:Password"];
 
-        if (string.IsNullOrWhiteSpace(username) ||
-            string.IsNullOrWhiteSpace(password))
+        var account = _configuration
+        .GetSection("DevAuth:Users")
+        .GetChildren()
+        .FirstOrDefault(user =>
+            user["Username"] == request.Username);
+
+        if (account is null)
         {
-            return StatusCode(503,
-                "Conta de desenvolvimento não configurada.");
+            return Unauthorized("Credenciais inválidas.");
         }
+
+        var username = account["Username"];
+        var password = account["Password"];
+        var role = account["Role"];
 
         // Verificar credenciais
         var passwordValid =
@@ -58,7 +64,7 @@ public class AuthController : ControllerBase
                 SHA256.HashData(
                     Encoding.UTF8.GetBytes(request.Password ?? "")),
                 SHA256.HashData(
-                    Encoding.UTF8.GetBytes(password)));
+                    Encoding.UTF8.GetBytes(password!)));
 
         if (request.Username != username || !passwordValid)
         {
@@ -76,7 +82,7 @@ public class AuthController : ControllerBase
                 JwtRegisteredClaimNames.Jti,
                 Guid.NewGuid().ToString()),
 
-            new Claim("role", "KitchenSupervisor")
+            new Claim("role", role!)
         };
 
         // Assinar o JWT
