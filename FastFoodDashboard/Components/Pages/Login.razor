@@ -1,0 +1,108 @@
+﻿@using System.Net.Http.Json
+@using FastFoodDashboard.Models
+@inject IHttpClientFactory HttpClientFactory
+
+@page "/login"
+<PageTitle>Login</PageTitle>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+@if (loading)
+{
+    <p>A carregar o página...</p>
+}
+else
+{
+    <label>Username</label>
+    <br />
+    <input @bind="username" type="text" />
+    <br />
+    <br />
+    <label>Password</label>
+    <br />
+    <input @bind="password" type="password" />
+    <br />
+    <br />
+    <button @onclick="LoginAsync"
+            disabled="@(loading || submitting)">
+        @(submitting ? "A enviar..." : "Login")
+            </button>
+}
+
+@code {
+    private string? error;
+    private bool loading = false;
+    private string? username;
+    private string? password;
+
+    private bool submitting = false;
+
+    private async Task LoginAsync()
+    {
+        if (submitting)
+            return;
+
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            error = "Username é obrigatórios.";
+            return;
+        }
+        else if (string.IsNullOrWhiteSpace(password))
+        {
+            error = "Password é obrigatório.";
+            return;
+        }
+
+        submitting = true;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("FastFoodApi");
+
+            var loginRequest = new 
+            {
+                Username = username,
+                Password = password
+            };
+
+            var response = await client.PostAsJsonAsync("api/auth/login", loginRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = $"Erro ao fazer login: HTTP " +
+                        $"{(int)response.StatusCode}";
+                return;
+            }
+
+            var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+
+            if (loginResponse is null ||
+            string.IsNullOrWhiteSpace(loginResponse.AccessToken))
+            {
+                error = "Não foi possível obter o token de autenticação.";
+                return;
+            }
+
+
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            error = "A operação demorou demasiado tempo.";
+        }
+        finally
+        {
+            submitting = false;
+        }
+
+        }
+    }
+}
