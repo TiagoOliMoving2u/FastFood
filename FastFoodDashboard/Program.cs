@@ -1,4 +1,6 @@
 using FastFoodDashboard.Components;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using FastFoodDashboard.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,9 @@ builder.Services.AddHttpClient("FastFoodApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });
+
+builder.Services.AddScoped<ProtectedLocalStorage>();
+builder.Services.AddScoped<BrowserAuthStorage>();
 
 var app = builder.Build();
 

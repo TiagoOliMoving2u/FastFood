@@ -1,6 +1,10 @@
 ﻿@using System.Net.Http.Json
 @using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
 @inject IHttpClientFactory HttpClientFactory
+@inject BrowserAuthStorage BrowserAuthStorage
+@inject NavigationManager Navigation
+@inject ILogger<Login> Logger
 
 @page "/login"
 <PageTitle>Login</PageTitle>
@@ -85,6 +89,31 @@ else
             string.IsNullOrWhiteSpace(loginResponse.AccessToken))
             {
                 error = "Não foi possível obter o token de autenticação.";
+                return;
+            }
+            
+            string destination = loginResponse.Role switch
+            {
+                "Kitchen" => "/dashboard/cozinha",
+                "Counter" => "/dashboard/balcao",
+                "KitchenSupervisor" => "/dashboard/cozinha",
+                _ => ""
+            };
+            Logger.LogInformation("Role recebida: {Role}", loginResponse.Role);
+            Logger.LogInformation("Destino: {Destination}", destination);
+            if (string.IsNullOrEmpty(destination))
+            {
+                error = "Perfil de utilizador inválido.";
+                return;
+            }
+
+            await BrowserAuthStorage.SaveAsync(loginResponse);
+
+            Navigation.NavigateTo(destination);
+
+            if (loginResponse is null)
+            {
+                error = "Credenciais inválidas.";
                 return;
             }
 

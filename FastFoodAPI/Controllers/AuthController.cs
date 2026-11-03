@@ -104,7 +104,9 @@ public class AuthController : ControllerBase
         {
             AccessToken = tokenString,
             TokenType = "Bearer",
-            ExpiresAtUtc = expires
+            ExpiresAtUtc = expires,
+            Role = role,
+            Username = username
         });
     }
 }
