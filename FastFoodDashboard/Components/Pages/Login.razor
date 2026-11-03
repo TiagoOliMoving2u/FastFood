@@ -99,8 +99,7 @@ else
                 "KitchenSupervisor" => "/dashboard/cozinha",
                 _ => ""
             };
-            Logger.LogInformation("Role recebida: {Role}", loginResponse.Role);
-            Logger.LogInformation("Destino: {Destination}", destination);
+            
             if (string.IsNullOrEmpty(destination))
             {
                 error = "Perfil de utilizador inválido.";
