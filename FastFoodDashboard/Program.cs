@@ -19,6 +19,7 @@ builder.Services.AddHttpClient("FastFoodApi", client =>
 
 builder.Services.AddScoped<ProtectedLocalStorage>();
 builder.Services.AddScoped<BrowserAuthStorage>();
+builder.Services.AddScoped<AuthApiService>();
 
 var app = builder.Build();
 

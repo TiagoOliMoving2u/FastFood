@@ -5,6 +5,7 @@
 @inject BrowserAuthStorage BrowserAuthStorage
 @inject NavigationManager Navigation
 @inject ILogger<Login> Logger
+@inject AuthApiService AuthApiService
 
 @page "/login"
 <PageTitle>Login</PageTitle>
@@ -68,31 +69,22 @@ else
         {
             var client = HttpClientFactory.CreateClient("FastFoodApi");
 
-            var loginRequest = new 
+            var loginRequest = new LoginRequest
             {
                 Username = username,
                 Password = password
             };
 
-            var response = await client.PostAsJsonAsync("api/auth/login", loginRequest);
+            var response = await AuthApiService.LoginAsync(loginRequest);
 
-            if (!response.IsSuccessStatusCode)
+            if (response is null ||
+            string.IsNullOrWhiteSpace(response.AccessToken))
             {
-                error = $"Erro ao fazer login: HTTP " +
-                        $"{(int)response.StatusCode}";
-                return;
-            }
-
-            var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
-
-            if (loginResponse is null ||
-            string.IsNullOrWhiteSpace(loginResponse.AccessToken))
-            {
-                error = "Não foi possível obter o token de autenticação.";
+                error = "Palavra passe ou username inválidos.";
                 return;
             }
             
-            string destination = loginResponse.Role switch
+            string destination = response.Role switch
             {
                 "Kitchen" => "/dashboard/cozinha",
                 "Counter" => "/dashboard/balcao",
@@ -106,11 +98,11 @@ else
                 return;
             }
 
-            await BrowserAuthStorage.SaveAsync(loginResponse);
+            await BrowserAuthStorage.SaveAsync(response);
 
             Navigation.NavigateTo(destination);
 
-            if (loginResponse is null)
+            if (response is null)
             {
                 error = "Credenciais inválidas.";
                 return;

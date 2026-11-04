@@ -9,7 +9,9 @@
 @inject IWebHostEnvironment HostEnvironment
 @inject IHttpClientFactory HttpClientFactory
 @inject BrowserAuthStorage BrowserAuthStorage
+@inject AuthApiService AuthApiService
 @implements IAsyncDisposable
+@inject NavigationManager Navigation
 
 
 
@@ -20,78 +22,95 @@
     <NavLink href="/dashboard/balcao">Balcão</NavLink>
 </nav>
 
-@if (dashboardConfig is null)
+@if (!accessChecked)
 {
-    <p>Dashboard não encontrado.</p>
+    <p>A verificar permissões...</p>
+}
+else if (!canAccess)
+{
+    <p>Não tens permissão para aceder a este dashboard.</p>
+    <a href="/login">Ir para o login</a>
 }
 else
 {
-    <PageTitle>@dashboardConfig.Title</PageTitle>
 
-    <h1>@dashboardConfig.Title</h1>
-
-    <p>SignalR: @connectionStatus</p>
-
-    <button @onclick="LoadOrders" disabled="@loading">
-        Atualizar pedidos
-    </button>
-
-    @if (loading)
+    @if (dashboardConfig is null)
     {
-        <p>A carregar pedidos...</p>
+        <p>Dashboard não encontrado.</p>
     }
-
-    @if (error is not null)
+    else
     {
-        <p class="text-danger">@error</p>
-    }
+        <PageTitle>@dashboardConfig.Title</PageTitle>
 
-    <div class="dashboard-grid">
-        @foreach (var state in VisibleStates)
+        <h1>@dashboardConfig.Title</h1>
+
+        <p>SignalR: @connectionStatus</p>
+
+        <button @onclick="LoadOrders" disabled="@loading">
+            Atualizar pedidos
+        </button>
+
+        <button @onclick="LogoutAsync">
+            Terminar sessão
+        </button>
+
+        @if (loading)
         {
-            var filteredOrders = orders
-                .Where(o => o.State == state.Id)
-                .ToList();
-
-            <section class="state-column">
-                <h3>@state.Name (@filteredOrders.Count)</h3>
-
-                @if (filteredOrders.Count == 0)
-                {
-                    <p>Sem pedidos</p>
-                }
-                else
-                {
-                    @foreach (var order in filteredOrders)
-                    {
-                        <article class="order-card">
-                            <strong>@order.Code</strong>
-
-                            @if (dashboardConfig.ShowAreaName)
-                            {
-                                <p>@order.AreaName</p>
-                            }
-                            @foreach (var item in order.Items){
-                                
-                                <p>@item.ToString()</p>
-                            }
-
-                            @if (dashboardConfig.CanReturnOrders.Contains(order.State))
-                            {
-                                <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
-                            }
-
-                            @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
-                            {
-                            <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
-                            }
-
-                        </article>
-                    }
-                }
-            </section>
+            <p>A carregar pedidos...</p>
         }
-    </div>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+
+        <div class="dashboard-grid">
+            @foreach (var state in VisibleStates)
+            {
+                var filteredOrders = orders
+                    .Where(o => o.State == state.Id)
+                    .ToList();
+
+                <section class="state-column">
+                    <h3>@state.Name (@filteredOrders.Count)</h3>
+
+                    @if (filteredOrders.Count == 0)
+                    {
+                        <p>Sem pedidos</p>
+                    }
+                    else
+                    {
+                        @foreach (var order in filteredOrders)
+                        {
+                            <article class="order-card">
+                                <strong>@order.Code</strong>
+
+                                @if (dashboardConfig.ShowAreaName)
+                                {
+                                    <p>@order.AreaName</p>
+                                }
+                                @foreach (var item in order.Items){
+                                
+                                    <p>@item.ToString()</p>
+                                }
+
+                                @if (dashboardConfig.CanReturnOrders.Contains(order.State))
+                                {
+                                    <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
+                                }
+
+                                @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
+                                {
+                                <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
+                                }
+
+                            </article>
+                        }
+                    }
+                </section>
+            }
+        </div>
+    }
 }
 
 @code {
@@ -110,6 +129,11 @@ else
 
     private bool loading;
     private string? error;
+
+    private bool accessChecked;
+    private bool canAccess;
+    private bool checkingAccess;
+    private string? checkedView;
 
     private IEnumerable<(int Id, string Name)> VisibleStates =>
     states.Where(s => dashboardConfig?.VisibleStates.Contains(s.Id) == true);
@@ -172,7 +196,87 @@ else
             return;
         }
 
-        await LoadOrders();
+        var currentView = (View ?? "sala").Trim().ToLowerInvariant();
+
+        if (checkedView != currentView)
+        {
+            accessChecked = false;
+            canAccess = false;
+        }
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var view = (View ?? "sala").Trim().ToLowerInvariant();
+
+        // Evitar verificações repetidas
+        if (checkingAccess ||
+            (accessChecked && checkedView == view))
+            return;
+
+        checkingAccess = true;
+        accessChecked = false;
+        canAccess = false;
+
+        try
+        {
+            // Terminar uma eventual ligação anterior
+            await DisposeAsync();
+
+            // Validar a Role através da FastFoodAPI
+            var allowed = await CanAccessDashboardAsync(view);
+
+            // A página pode ter mudado durante a validação
+            if (view != (View ?? "sala").Trim().ToLowerInvariant())
+                return;
+
+            canAccess = allowed;
+
+            if (!allowed)
+            {
+                connectionStatus = "Acesso não autorizado.";
+                return;
+            }
+
+            // Carregar apenas pedidos de um dashboard autorizado
+            await LoadOrders();
+
+            // Evitar iniciar o Hub se a página entretanto mudou
+            if (view != (View ?? "sala").Trim().ToLowerInvariant())
+                return;
+
+            // Iniciar o SignalR depois da autorização
+            await StartSignalRAsync(view);
+        }
+        catch (HttpRequestException)
+        {
+            canAccess = false;
+            connectionStatus = "Erro de comunicação com a API.";
+        }
+        catch (TaskCanceledException)
+        {
+            canAccess = false;
+            connectionStatus = "A ligação à API expirou.";
+        }
+        finally
+        {
+            // Só guardar a validação para a página atual
+            if (view == (View ?? "sala").Trim().ToLowerInvariant())
+            {
+                checkedView = view;
+                accessChecked = true;
+            }
+            else
+            {
+                checkedView = null;
+                canAccess = false;
+                accessChecked = false;
+            }
+
+            checkingAccess = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private readonly (int Id, string Name)[] states =
@@ -283,25 +387,16 @@ else
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task StartSignalRAsync(string view)
     {
-        if (!firstRender)
-            return;
-
-        // Este teste com JWT manual é apenas para desenvolvimento
-        if (!HostEnvironment.IsDevelopment())
-        {
-            connectionStatus = "Autenticação não configurada.";
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
         var token = await BrowserAuthStorage.GetTokenAsync();
+
+        if (view != (View ?? "sala").Trim().ToLowerInvariant())
+            return;
 
         if (string.IsNullOrWhiteSpace(token))
         {
-            connectionStatus = "JWT de teste não configurado.";
-            await InvokeAsync(StateHasChanged);
+            connectionStatus = "Atualização em tempo real indisponível.";
             return;
         }
 
@@ -313,72 +408,95 @@ else
             new Uri(apiBaseUrl),
             "hubs/orders");
 
-        // Criar a ligação ao Hub
-        hubConnection = new HubConnectionBuilder()
+        var connection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
-                options.AccessTokenProvider = () =>
-                    Task.FromResult<string?>(
-                        token);
+                // Recuperar o JWT quando o SignalR precisar dele
+                options.AccessTokenProvider =
+                    BrowserAuthStorage.GetTokenAsync;
             })
             .WithAutomaticReconnect()
             .Build();
 
-        // Escutar as alterações de pedidos
-        ordersChangedHandler = hubConnection.On(
-            "OrdersChanged",
-            async () =>
-            {
-                await InvokeAsync(async () =>
-                {
-                    await LoadOrders();
-                    StateHasChanged();
-                });
-            });
+        hubConnection = connection;
 
-        // Ligação temporariamente perdida
-        hubConnection.Reconnecting += _ =>
+        // Receber alterações dos pedidos
+        ordersChangedHandler = connection.On(
+            "OrdersChanged",
+            () => InvokeAsync(async () =>
+            {
+                if (!canAccess ||
+                    !accessChecked ||
+                    checkedView != view ||
+                    view != (View ?? "sala").Trim().ToLowerInvariant() ||
+                    hubConnection != connection)
+                    return;
+
+                await LoadOrders();
+                StateHasChanged();
+            }));
+
+        // Ligação perdida
+        connection.Reconnecting += _ =>
             InvokeAsync(() =>
             {
+                if (hubConnection != connection)
+                    return;
+
                 connectionStatus = "A reconectar...";
                 StateHasChanged();
             });
 
         // Ligação restabelecida
-        hubConnection.Reconnected += _ =>
+        connection.Reconnected += _ =>
             InvokeAsync(async () =>
             {
+                if (hubConnection != connection)
+                    return;
+
                 connectionStatus = "Ligado";
 
-                await LoadOrders();
+                if (canAccess &&
+                    accessChecked &&
+                    checkedView == view &&
+                    view == (View ?? "sala").Trim().ToLowerInvariant())
+                {
+                    await LoadOrders();
+                }
+
                 StateHasChanged();
             });
 
         // Ligação terminada
-        hubConnection.Closed += _ =>
+        connection.Closed += _ =>
             InvokeAsync(() =>
             {
+                if (hubConnection != connection)
+                    return;
+
                 connectionStatus = "Desligado";
                 StateHasChanged();
             });
 
         try
         {
-            await hubConnection.StartAsync();
+            await connection.StartAsync();
 
             connectionStatus = "Ligado";
 
-            // Sincronizar possíveis alterações desde o GET inicial
-            await LoadOrders();
+            // Sincronizar alterações ocorridas durante a ligação
+            if (view == (View ?? "sala").Trim().ToLowerInvariant())
+            {
+                await LoadOrders();
+            }
         }
         catch (Exception ex)
         {
-            connectionStatus =
-                $"Erro ao ligar: {ex.Message}";
+            connectionStatus = $"Erro ao ligar: {ex.Message}";
         }
-
-        await InvokeAsync(StateHasChanged);
     }
+
+    
 
     public async ValueTask DisposeAsync()
     {
@@ -388,6 +506,52 @@ else
         {
             await hubConnection.DisposeAsync();
         }
+    }
+
+    private async Task LogoutAsync()
+    {
+        // Eliminar o JWT armazenado
+        await BrowserAuthStorage.LogoutAsync();
+
+        // Terminar a ligação SignalR
+        await DisposeAsync();
+
+        // Redirecionar para o login
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    private async Task<bool> CanAccessDashboardAsync(string view)
+    {
+        // Dashboards públicos
+        if (view is "sala" or "esplanada")
+            return true;
+
+        // Rejeitar páginas desconhecidas
+        if (view is not ("cozinha" or "balcao"))
+            return false;
+
+        // Recuperar o JWT
+        var token = await BrowserAuthStorage.GetTokenAsync();
+
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        // A FastFoodAPI valida o JWT e devolve a Role
+        var user = await AuthApiService.GetCurrentUserAsync(token);
+
+        if (user is null)
+            return false;
+
+        return view switch
+        {
+            "cozinha" =>
+                user.Role is "Kitchen" or "KitchenSupervisor",
+
+            "balcao" =>
+                user.Role is "Counter" or "KitchenSupervisor",
+
+            _ => false
+        };
     }
 
 }
