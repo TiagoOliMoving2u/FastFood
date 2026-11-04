@@ -107,4 +107,15 @@ public class AuthController : ControllerBase
             Username = user.Username
         });
     }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        return Ok(new
+        {
+            Username = User.FindFirstValue(ClaimTypes.Name),
+            Role = User.FindFirstValue(ClaimTypes.Role)
+        });
+    }
 }
