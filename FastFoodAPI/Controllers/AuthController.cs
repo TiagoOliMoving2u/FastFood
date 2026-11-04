@@ -1,4 +1,5 @@
 ﻿
+using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -20,20 +21,23 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
     private readonly SymmetricSecurityKey _signingKey;
+    private readonly AuthService _authService;
 
     public AuthController(
         IConfiguration configuration,
         IHostEnvironment environment,
-        SymmetricSecurityKey signingKey)
+        SymmetricSecurityKey signingKey,
+        AuthService authService)
     {
         _configuration = configuration;
         _environment = environment;
         _signingKey = signingKey;
+        _authService = authService;
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (!_environment.IsDevelopment() ||
             HttpContext.Connection.RemoteIpAddress is not { } ip ||
@@ -43,46 +47,40 @@ public class AuthController : ControllerBase
         }
 
 
-        var account = _configuration
-        .GetSection("DevAuth:Users")
-        .GetChildren()
-        .FirstOrDefault(user =>
-            user["Username"] == request.Username);
+        var user = await _authService.AuthenticateAsync(
+            request.Username,
+            request.Password);
 
-        if (account is null)
+        if (user is null)
         {
-            return Unauthorized("Credenciais inválidas.");
+            return Unauthorized(new
+            {
+                Message = "Username ou password inválidos."
+            });
         }
 
-        var username = account["Username"];
-        var password = account["Password"];
-        var role = account["Role"];
-
-        // Verificar credenciais
-        var passwordValid =
-            CryptographicOperations.FixedTimeEquals(
-                SHA256.HashData(
-                    Encoding.UTF8.GetBytes(request.Password ?? "")),
-                SHA256.HashData(
-                    Encoding.UTF8.GetBytes(password!)));
-
-        if (request.Username != username || !passwordValid)
-        {
-            return Unauthorized("Credenciais inválidas.");
-        }
+        
 
         var expires = DateTime.UtcNow.AddMinutes(15);
 
         // Dados incluídos no JWT
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, username),
+            new Claim(
+                JwtRegisteredClaimNames.Sub,
+                user.Id.ToString()),
+
+            new Claim(
+                ClaimTypes.Name,
+                user.Username),
+
+            new Claim(
+                ClaimTypes.Role,
+                user.Role),
 
             new Claim(
                 JwtRegisteredClaimNames.Jti,
-                Guid.NewGuid().ToString()),
-
-            new Claim("role", role!)
+                Guid.NewGuid().ToString())
         };
 
         // Assinar o JWT
@@ -105,8 +103,8 @@ public class AuthController : ControllerBase
             AccessToken = tokenString,
             TokenType = "Bearer",
             ExpiresAtUtc = expires,
-            Role = role,
-            Username = username
+            Role = user.Role,
+            Username = user.Username
         });
     }
 }

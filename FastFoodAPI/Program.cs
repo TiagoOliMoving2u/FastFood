@@ -4,6 +4,8 @@ using FastFoodAPI.Repositories;
 using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Identity;
+using FastFoodAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,10 @@ builder.Services.AddScoped<AreaRepository>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<MenuItemRepository>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IPasswordHasher<User>,PasswordHasher<User>>();
+builder.Services.AddScoped<UserCreationService>();
 builder.Services.AddSignalR();
 
 //Autenticação e Autorização

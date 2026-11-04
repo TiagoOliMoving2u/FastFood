@@ -1,6 +1,7 @@
-@FastFoodAPI_HostAddress = http://localhost:5042
+POST https://localhost:7098/api/auth/login
+Content-Type: application/json
 
-GET {{FastFoodAPI_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
+{
+  "username": "cozinha",
+  "password": "123456789012"
+}
