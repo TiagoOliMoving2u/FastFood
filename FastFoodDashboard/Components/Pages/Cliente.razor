@@ -3,9 +3,11 @@
 @using FastFoodDashboard.Models
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.AspNetCore.Hosting
+@using FastFoodDashboard.Services
 @inject IWebHostEnvironment HostEnvironment
 @inject IConfiguration Configuration
 @inject IHttpClientFactory HttpClientFactory
+@inject BrowserAuthStorage BrowserAuthStorage
 @implements IAsyncDisposable
 
 <PageTitle>Cliente</PageTitle>
@@ -141,7 +143,7 @@ else
             return;
         }
 
-        var token = Configuration["SignalR:DevAccessToken"];
+        var token = await BrowserAuthStorage.GetTokenAsync();
 
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -164,7 +166,7 @@ else
             {
                 options.AccessTokenProvider = () =>
                     Task.FromResult<string?>(
-                        Configuration["SignalR:DevAccessToken"]);
+                        token);
             })
             .WithAutomaticReconnect()
             .Build();

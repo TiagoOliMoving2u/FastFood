@@ -82,9 +82,7 @@ namespace FastFoodDashboard.Services
             var content = await response.Content.ReadAsStringAsync(
     cancellationToken);
 
-            Console.WriteLine($"Status Code: {response.StatusCode}");
-            Console.WriteLine($"Content-Type: {response.Content.Headers.ContentType}");
-            Console.WriteLine($"Resposta da API: {content}");
+            response.EnsureSuccessStatusCode();
 
             return await response.Content
                 .ReadFromJsonAsync<List<RoleDto>>(
