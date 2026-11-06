@@ -22,100 +22,112 @@
     <NavLink href="/dashboard/balcao">Balcão</NavLink>
 </nav>
 
-@if (!accessChecked)
-{
-    <p>A verificar permissões...</p>
-}
-else if (!canAccess)
-{
-    <p>Não tens permissão para aceder a este dashboard.</p>
-    <a href="/login">Ir para o login</a>
-}
-else
-{
 
-    @if (dashboardConfig is null)
+@if (Expired)
+{
+    <p class="text-warning">
+        A tua sessão expirou. Inicia sessão novamente.
+    </p>
+}
+else{
+    @if (!accessChecked)
     {
-        <p>Dashboard não encontrado.</p>
+        <p>A verificar permissões...</p>
+    }
+    else if (!canAccess)
+    {
+        <p>Não tens permissão para aceder a este dashboard.</p>
+        <a href="/login">Ir para o login</a>
     }
     else
     {
-        <PageTitle>@dashboardConfig.Title</PageTitle>
 
-        <h1>@dashboardConfig.Title</h1>
-
-        <p>SignalR: @connectionStatus</p>
-
-        <button @onclick="LoadOrders" disabled="@loading">
-            Atualizar pedidos
-        </button>
-
-        <button @onclick="LogoutAsync">
-            Terminar sessão
-        </button>
-
-        @if (loading)
+        @if (dashboardConfig is null)
         {
-            <p>A carregar pedidos...</p>
+            <p>Dashboard não encontrado.</p>
         }
-
-        @if (error is not null)
+        else
         {
-            <p class="text-danger">@error</p>
-        }
+            <PageTitle>@dashboardConfig.Title</PageTitle>
 
-        <div class="dashboard-grid">
-            @foreach (var state in VisibleStates)
+            <h1>@dashboardConfig.Title</h1>
+
+            <p>SignalR: @connectionStatus</p>
+
+            <button @onclick="LoadOrders" disabled="@loading">
+                Atualizar pedidos
+            </button>
+
+            <button @onclick="LogoutAsync">
+                Terminar sessão
+            </button>
+
+            @if (loading)
             {
-                var filteredOrders = orders
-                    .Where(o => o.State == state.Id)
-                    .ToList();
-
-                <section class="state-column">
-                    <h3>@state.Name (@filteredOrders.Count)</h3>
-
-                    @if (filteredOrders.Count == 0)
-                    {
-                        <p>Sem pedidos</p>
-                    }
-                    else
-                    {
-                        @foreach (var order in filteredOrders)
-                        {
-                            <article class="order-card">
-                                <strong>@order.Code</strong>
-
-                                @if (dashboardConfig.ShowAreaName)
-                                {
-                                    <p>@order.AreaName</p>
-                                }
-                                @foreach (var item in order.Items){
-                                
-                                    <p>@item.ToString()</p>
-                                }
-
-                                @if (dashboardConfig.CanReturnOrders.Contains(order.State))
-                                {
-                                    <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
-                                }
-
-                                @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
-                                {
-                                <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
-                                }
-
-                            </article>
-                        }
-                    }
-                </section>
+                <p>A carregar pedidos...</p>
             }
-        </div>
+
+            @if (error is not null)
+            {
+                <p class="text-danger">@error</p>
+            }
+
+            <div class="dashboard-grid">
+                @foreach (var state in VisibleStates)
+                {
+                    var filteredOrders = orders
+                        .Where(o => o.State == state.Id)
+                        .ToList();
+
+                    <section class="state-column">
+                        <h3>@state.Name (@filteredOrders.Count)</h3>
+
+                        @if (filteredOrders.Count == 0)
+                        {
+                            <p>Sem pedidos</p>
+                        }
+                        else
+                        {
+                            @foreach (var order in filteredOrders)
+                            {
+                                <article class="order-card">
+                                    <strong>@order.Code</strong>
+
+                                    @if (dashboardConfig.ShowAreaName)
+                                    {
+                                        <p>@order.AreaName</p>
+                                    }
+                                    @foreach (var item in order.Items){
+                                
+                                        <p>@item.ToString()</p>
+                                    }
+
+                                    @if (dashboardConfig.CanReturnOrders.Contains(order.State))
+                                    {
+                                        <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
+                                    }
+
+                                    @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
+                                    {
+                                    <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
+                                    }
+
+                                </article>
+                            }
+                        }
+                    </section>
+                }
+            </div>
+        }
     }
 }
 
 @code {
     [Parameter]
     public string? View { get; set; }
+
+    [SupplyParameterFromQuery(Name = "expired")]
+    private bool Expired { get; set; }
 
     private DashboardConfig? dashboardConfig;
 
@@ -303,6 +315,7 @@ else
             if (string.IsNullOrWhiteSpace(token))
             {
                 error = "JWT de desenvolvimento não configurado.";
+                await SessionExpiredAsync();
                 return;
             }
 
@@ -325,6 +338,7 @@ else
             {
                 error = $"Erro ao atualizar o pedido: " +
                         $"{(int)response.StatusCode}";
+                await SessionExpiredAsync();
 
                 return;
             }
@@ -552,6 +566,17 @@ else
 
             _ => false
         };
+    }
+
+    private async Task SessionExpiredAsync()
+    {
+        await BrowserAuthStorage.LogoutAsync();
+
+        await DisposeAsync();
+
+        Navigation.NavigateTo(
+            "/login?expired=true",
+            forceLoad: true);
     }
 
 }

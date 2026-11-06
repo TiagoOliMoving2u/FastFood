@@ -1,11 +1,12 @@
 using FastFoodAPI.Data;
 using FastFoodAPI.Hubs;
+using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
 using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
-using FastFoodAPI.Models;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordHasher<User>,PasswordHasher<User>>();
 builder.Services.AddScoped<UserCreationService>();
+builder.Services.AddScoped<RoleService>();
 builder.Services.AddSignalR();
 
 //Autenticação e Autorização
@@ -79,8 +81,7 @@ builder.Services
                 {
                     SecurityAlgorithms.HmacSha256
                 },
-
-                RoleClaimType = "role",
+                RoleClaimType = ClaimTypes.Role,
                 NameClaimType = "sub",
 
                 ClockSkew = TimeSpan.FromSeconds(30)

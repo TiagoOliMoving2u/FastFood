@@ -1,0 +1,66 @@
+﻿@using FastFoodDashboard.Models;
+@using FastFoodDashboard.Services
+
+@inject AuthApiService AuthApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+
+@page "/create-user"
+
+<PageTitle>Create User</PageTitle>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+<label>Username</label>
+<br />
+<input @bind="username" type="text" />
+<br />
+<label>Password</label>
+<br />
+<input @bind="password" type="password" />
+<br />
+<select @bind="selectedRole">
+    <option value="0">Selecionar área</option>
+    @foreach (var role in roles)
+    {
+        <option value="@role.Id">@role.Name</option>
+    }
+</select>
+<br />
+<button @onclick="">Create User</button>
+
+@code {
+    private string? error;
+    private string? username;
+    private string? password;
+
+    private int selectedRole = 0;
+    private List<RoleDto>? roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetRolosAsync();
+    }
+
+    private async Task GetRolosAsync()
+    {
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "JWT de desenvolvimento não configurado.";
+                return;
+            }
+
+            roles = await AuthApiService.GetRolesAsync(token);
+        }
+        catch (Exception ex)
+        {
+            error = "Erro ao carregar as roles." + ex.ToString();
+        }
+    }
+}

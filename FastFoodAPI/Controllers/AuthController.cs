@@ -118,4 +118,5 @@ public class AuthController : ControllerBase
             Role = User.FindFirstValue(ClaimTypes.Role)
         });
     }
+
 }

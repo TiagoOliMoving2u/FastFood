@@ -86,5 +86,25 @@ namespace FastFoodAPI.Repositories
                     },
                     cancellationToken: cancellationToken));
         }
+
+        public async Task<List<Role>?> GetRolesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+            SELECT
+                r.Id,
+                r.Name,
+                r.Description,
+                r.IsActive
+            FROM dbo.Roles r
+            WHERE r.IsActive = 1;
+            """;
+            return (await connection.QueryAsync<Role>(
+                new CommandDefinition(
+                    sql,
+                    cancellationToken: cancellationToken))).ToList();
+        }
     }
 }
