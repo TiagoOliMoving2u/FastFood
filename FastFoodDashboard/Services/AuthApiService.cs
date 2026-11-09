@@ -18,7 +18,7 @@ namespace FastFoodDashboard.Services
         {
                 var client = _httpClientFactory.CreateClient("FastFoodApi");
 
-                var response = await client.PostAsJsonAsync("api/auth/login", loginRequest);
+                var response = await client.PostAsJsonAsync("api/user/login", loginRequest);
             
                 if (!response.IsSuccessStatusCode)
                 {
@@ -36,7 +36,7 @@ namespace FastFoodDashboard.Services
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                "api/auth/me");
+                "api/user/me");
 
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
@@ -99,7 +99,7 @@ namespace FastFoodDashboard.Services
             var client = _httpClientFactory.CreateClient("FastFoodApi");
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "api/users");
+                "api/user/create");
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
             var createUserRequest = new

@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
+using FastFoodAPI.DTOs;
 
 namespace FastFoodAPI.Controllers;
 
@@ -15,7 +14,7 @@ public record LoginRequest(
     string Password);
 
 [ApiController]
-[Route("api/auth")]
+[Route("api/user")]
 public class UserController : ControllerBase
 {
     private readonly IConfiguration _configuration;
@@ -119,4 +118,34 @@ public class UserController : ControllerBase
         });
     }
 
+
+    [Authorize]
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserRequest request)
+    {
+        if (!_environment.IsDevelopment() ||
+            HttpContext.Connection.RemoteIpAddress is not { } ip ||
+            !System.Net.IPAddress.IsLoopback(ip))
+        {
+            return NotFound();
+        }
+        var user = await _userService.CreateUserAsync(
+            request.Username,
+            request.Password,
+            request.Role);
+        if (user is null)
+        {
+            return BadRequest(new
+            {
+                Message = "Não foi possível criar o usuário."
+            });
+        }
+        return Ok(new
+        {
+            Message = "Usuário criado com sucesso.",
+            //Username = user.Username,
+            //Role = user.Role
+        });
+    }
 }
