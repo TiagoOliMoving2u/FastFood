@@ -1,7 +1,6 @@
 ﻿using FastFoodDashboard.Models;
 using System.Net;
 using System.Net.Http.Headers;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FastFoodDashboard.Services
 {
@@ -91,9 +90,7 @@ namespace FastFoodDashboard.Services
 
         public async Task<bool> CreateUserAsync(
             string token,
-            string username,
-            string password,
-            string role,
+            CreateUserRequest createUserRequest,
             CancellationToken cancellationToken = default)
         {
             var client = _httpClientFactory.CreateClient("FastFoodApi");
@@ -102,14 +99,9 @@ namespace FastFoodDashboard.Services
                 "api/user/create");
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
-            var createUserRequest = new
-            {
-                Username = username,
-                Password = password,
-                Role = role
-            };
+            
             request.Content = JsonContent.Create(createUserRequest);
-            using var response = await client.SendAsync(
+            var response = await client.SendAsync(
                 request, cancellationToken);
             if (response.StatusCode == HttpStatusCode.Unauthorized ||
                 response.StatusCode == HttpStatusCode.Forbidden)
