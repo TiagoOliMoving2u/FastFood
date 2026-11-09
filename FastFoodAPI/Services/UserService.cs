@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FastFoodAPI.Services
 {
-    public class UserCreationService
+    public class UserService
     {
         private readonly UserRepository _userRepository;
         private readonly IPasswordHasher<User> _passwordHasher;
 
-        public UserCreationService(
+        public UserService(
         UserRepository userRepository,
         IPasswordHasher<User> passwordHasher)
         {
@@ -53,6 +53,35 @@ namespace FastFoodAPI.Services
                 user,
                 roleName,
                 cancellationToken);
+        }
+
+        public async Task<User?> AuthenticateAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                return null;
+            }
+
+            var user = await _userRepository.GetByUsernameAsync(
+                username,
+                cancellationToken);
+
+            if (user is null)
+                return null;
+
+            var result = _passwordHasher.VerifyHashedPassword(
+                user,
+                user.PasswordHash,
+                password);
+
+            if (result == PasswordVerificationResult.Failed)
+                return null;
+
+            return user;
         }
     }
 }

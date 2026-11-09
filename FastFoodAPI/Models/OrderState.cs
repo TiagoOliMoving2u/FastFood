@@ -1,4 +1,4 @@
-﻿namespace FastFoodAPI.Models
+namespace FastFoodAPI.Models
 {
     public enum OrderState
     {

@@ -34,7 +34,7 @@ namespace FastFoodAPI.Repositories
             return orders.AsList();
         }
 
-        //method to get an order by its ID
+        //method to get an order by is ID
         public async Task<OrderResponse?> GetByIdAsync(int orderId, CancellationToken cancellationToken = default)
         {
             

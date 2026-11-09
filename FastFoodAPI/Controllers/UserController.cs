@@ -16,23 +16,23 @@ public record LoginRequest(
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class UserController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
     private readonly SymmetricSecurityKey _signingKey;
-    private readonly AuthService _authService;
+    private readonly UserService _userService;
 
-    public AuthController(
+    public UserController(
         IConfiguration configuration,
         IHostEnvironment environment,
         SymmetricSecurityKey signingKey,
-        AuthService authService)
+        UserService userService)
     {
         _configuration = configuration;
         _environment = environment;
         _signingKey = signingKey;
-        _authService = authService;
+        _userService = userService;
     }
 
     [AllowAnonymous]
@@ -47,7 +47,7 @@ public class AuthController : ControllerBase
         }
 
 
-        var user = await _authService.AuthenticateAsync(
+        var user = await _userService.AuthenticateAsync(
             request.Username,
             request.Password);
 

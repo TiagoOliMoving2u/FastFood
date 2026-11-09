@@ -57,7 +57,7 @@ namespace FastFoodDashboard.Services
                     cancellationToken: cancellationToken);
         }
 
-        internal async Task<List<RoleDto>?> GetRolesAsync(
+        public async Task<List<RoleDto>?> GetRolesAsync(
             string token,
             CancellationToken cancellationToken = default)
         {
@@ -87,6 +87,37 @@ namespace FastFoodDashboard.Services
             return await response.Content
                 .ReadFromJsonAsync<List<RoleDto>>(
                     cancellationToken: cancellationToken);
+        }
+
+        public async Task<bool> CreateUserAsync(
+            string token,
+            string username,
+            string password,
+            string role,
+            CancellationToken cancellationToken = default)
+        {
+            var client = _httpClientFactory.CreateClient("FastFoodApi");
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "api/users");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+            var createUserRequest = new
+            {
+                Username = username,
+                Password = password,
+                Role = role
+            };
+            request.Content = JsonContent.Create(createUserRequest);
+            using var response = await client.SendAsync(
+                request, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return false;
+            }
+            response.EnsureSuccessStatusCode();
+            return true;
         }
     }
 }

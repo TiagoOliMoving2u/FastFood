@@ -21,6 +21,10 @@
 <br />
 <input @bind="password" type="password" />
 <br />
+<label>Confirm Password</label>
+<br />
+<input @bind="confirmPassword" type="password" />
+<br />
 <select @bind="selectedRole">
     <option value="0">Selecionar área</option>
     @foreach (var role in roles)
@@ -29,12 +33,13 @@
     }
 </select>
 <br />
-<button @onclick="">Create User</button>
+<button @onclick="@CreateUserAsync">Create User</button>
 
 @code {
     private string? error;
     private string? username;
     private string? password;
+    private string? confirmPassword;
 
     private int selectedRole = 0;
     private List<RoleDto>? roles = new();
@@ -61,6 +66,61 @@
         catch (Exception ex)
         {
             error = "Erro ao carregar as roles." + ex.ToString();
+        }
+    }
+
+    private async Task<bool> ValidateInputs()
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            error = "Username é obrigatório.";
+            return false;
+        }
+        else if (string.IsNullOrWhiteSpace(password))
+        {
+            error = "Password é obrigatório.";
+            return false;
+        }
+        else if (string.IsNullOrWhiteSpace(confirmPassword))
+        {
+            error = "Confirm Password é obrigatório.";
+            return false;
+        }
+        else if (selectedRole == 0)
+        {
+            error = "Selecione uma role.";
+            return false;
+        }
+        return true;
+    }
+
+    private async Task<bool> ConfirmPassowrd()
+    {
+        if (password == confirmPassword)
+            return true;
+
+        error = "Passwords não coencidem!";
+        return false;
+    }
+
+    private async Task CreateUserAsync()
+    {
+        if (!await ConfirmPassowrd() || !await ValidateInputs())
+            return;
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "JWT de desenvolvimento não configurado.";
+                return;
+            }
+            
+            error = "Utilizador criado com sucesso!";
+        }
+        catch (Exception ex)
+        {
+            error = "Erro ao criar o utilizador." + ex.ToString();
         }
     }
 }

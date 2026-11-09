@@ -19,14 +19,18 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<SqlConnectionFactory>();
 
 builder.Services.AddScoped<AreaRepository>();
-builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<MenuItemRepository>();
-builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<IPasswordHasher<User>,PasswordHasher<User>>();
-builder.Services.AddScoped<UserCreationService>();
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<RoleService>();
+builder.Services.AddScoped<UserService>();
+
+
 builder.Services.AddSignalR();
 
 //Autenticação e Autorização

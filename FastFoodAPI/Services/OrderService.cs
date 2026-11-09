@@ -1,12 +1,7 @@
 ﻿using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
-using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Mvc;
-using FastFoodAPI.Repositories;
-using Microsoft.AspNetCore.Mvc;
-using Dapper;
-using System.Security.Claims;
 using System.Security.Claims;
 
 namespace FastFoodAPI.Services
@@ -114,7 +109,7 @@ namespace FastFoodAPI.Services
 
             var menuItems = await _menuItemRepository.GetMenuItemsAsync(null, menuItemIds?.ToArray(), cancellationToken);
 
-            if(menuItems.Count != menuItemIds.Count)
+            if(menuItems.Count != menuItemIds?.Count)
             {
                 throw new ArgumentException("One or more MenuItemIds are invalid.");
             }
