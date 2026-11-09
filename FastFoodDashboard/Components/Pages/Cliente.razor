@@ -1,13 +1,12 @@
 ﻿@page "/cliente"
 @using System.Net.Http.Json
 @using FastFoodDashboard.Models
-@using Microsoft.AspNetCore.SignalR.Client
-@using Microsoft.AspNetCore.Hosting
 @using FastFoodDashboard.Services
-@inject IWebHostEnvironment HostEnvironment
-@inject IConfiguration Configuration
+
 @inject IHttpClientFactory HttpClientFactory
 @inject BrowserAuthStorage BrowserAuthStorage
+@inject SignalRService SignalRService
+
 @implements IAsyncDisposable
 
 <PageTitle>Cliente</PageTitle>
@@ -86,9 +85,7 @@ else
     private bool submitting = false;
     private string? success;
 
-    private IDisposable? ordersCreatedHandler;
     private string connectionStatus = "A iniciar...";
-    private HubConnection? hubConnection;
 
     private decimal Total =>
         selections.Sum(s => s.Item.Price * s.Quantity);
@@ -135,94 +132,7 @@ else
         if (!firstRender)
             return;
 
-        // Este teste com JWT manual é apenas para desenvolvimento
-        if (!HostEnvironment.IsDevelopment())
-        {
-            connectionStatus = "Autenticação não configurada.";
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
-        var token = await BrowserAuthStorage.GetTokenAsync();
-
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            connectionStatus = "JWT de teste não configurado.";
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
-        var apiBaseUrl = Configuration["Api:BaseUrl"]
-            ?? throw new InvalidOperationException(
-                "Endereço da API não configurado.");
-
-        var hubUrl = new Uri(
-            new Uri(apiBaseUrl),
-            "hubs/orders");
-
-        // Criar a ligação ao Hub
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, options =>
-            {
-                options.AccessTokenProvider = () =>
-                    Task.FromResult<string?>(
-                        token);
-            })
-            .WithAutomaticReconnect()
-            .Build();
-
-        // Escutar as alterações de pedidos
-        ordersCreatedHandler = hubConnection.On(
-            "CreatedNewOrder",
-            async () =>
-            {
-                await InvokeAsync(async () =>
-                {
-                    await LoadMenuItem();
-                    StateHasChanged();
-                });
-            });
-
-        // Ligação temporariamente perdida
-        hubConnection.Reconnecting += _ =>
-            InvokeAsync(() =>
-            {
-                connectionStatus = "A reconectar...";
-                StateHasChanged();
-            });
-
-        // Ligação restabelecida
-        hubConnection.Reconnected += _ =>
-            InvokeAsync(async () =>
-            {
-                connectionStatus = "Ligado";
-
-                await LoadMenuItem();
-                StateHasChanged();
-            });
-
-        // Ligação terminada
-        hubConnection.Closed += _ =>
-            InvokeAsync(() =>
-            {
-                connectionStatus = "Desligado";
-                StateHasChanged();
-            });
-
-        try
-        {
-            await hubConnection.StartAsync();
-
-            connectionStatus = "Ligado";
-
-            // Sincronizar possíveis alterações desde o GET inicial
-            await LoadMenuItem();
-        }
-        catch (Exception ex)
-        {
-            connectionStatus =
-                $"Erro ao ligar: {ex.Message}";
-        }
+        await StartSignalRAsync();
 
         await InvokeAsync(StateHasChanged);
     }
@@ -295,6 +205,8 @@ else
             {
                 selection.Quantity = 0;
             }
+
+            await LoadMenuItem();
         }
         catch (HttpRequestException ex)
         {
@@ -310,13 +222,56 @@ else
         }
     }
 
+    private async Task StartSignalRAsync()
+    {
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                connectionStatus = "Atualização em tempo real indisponível.";
+                return;
+            }
+
+            await SignalRService.StartAsync(
+                eventName: "CreatedNewOrder",
+
+                // Quando é criado um pedido
+                onEvent: () => InvokeAsync(async () =>
+                {
+                    await LoadMenuItem();
+                    StateHasChanged();
+                }),
+
+                // Recuperar o JWT para a ligação
+                tokenProvider: BrowserAuthStorage.GetTokenAsync,
+
+                // Quando o SignalR recupera a ligação
+                onReconnected: () => InvokeAsync(async () =>
+                {
+                    await LoadMenuItem();
+                    StateHasChanged();
+                }),
+
+                // Atualizar o estado da ligação
+                onStatusChanged: status => InvokeAsync(() =>
+                {
+                    connectionStatus = status;
+                    StateHasChanged();
+                }));
+
+            // Sincronizar o menu após estabelecer a ligação
+            await LoadMenuItem();
+        }
+        catch (Exception ex)
+        {
+            connectionStatus = $"Erro ao ligar: {ex.Message}";
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
-        ordersCreatedHandler?.Dispose();
-
-        if (hubConnection is not null)
-        {
-            await hubConnection.DisposeAsync();
-        }
+        await SignalRService.StopAsync();
     }
 }

@@ -1,7 +1,6 @@
 ﻿@page "/dashboard/{View?}"
 @using FastFoodDashboard.Models
 @using System.Net.Http.Json
-@using Microsoft.AspNetCore.SignalR.Client;
 @using Microsoft.AspNetCore.Hosting
 @using System.Net.Http.Headers
 @using FastFoodDashboard.Services
@@ -10,8 +9,9 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject BrowserAuthStorage BrowserAuthStorage
 @inject AuthApiService AuthApiService
-@implements IAsyncDisposable
 @inject NavigationManager Navigation
+@inject SignalRService SignalRService
+@implements IAsyncDisposable
 
 
 
@@ -132,8 +132,6 @@ else{
     private DashboardConfig? dashboardConfig;
 
     private List<OrderDto> orders = new();
-
-    private HubConnection? hubConnection;
 
     private IDisposable? ordersChangedHandler;
 
@@ -401,126 +399,6 @@ else{
         }
     }
 
-    private async Task StartSignalRAsync(string view)
-    {
-        var token = await BrowserAuthStorage.GetTokenAsync();
-
-        if (view != (View ?? "sala").Trim().ToLowerInvariant())
-            return;
-
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            connectionStatus = "Atualização em tempo real indisponível.";
-            return;
-        }
-
-        var apiBaseUrl = Configuration["Api:BaseUrl"]
-            ?? throw new InvalidOperationException(
-                "Endereço da API não configurado.");
-
-        var hubUrl = new Uri(
-            new Uri(apiBaseUrl),
-            "hubs/orders");
-
-        var connection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, options =>
-            {
-                // Recuperar o JWT quando o SignalR precisar dele
-                options.AccessTokenProvider =
-                    BrowserAuthStorage.GetTokenAsync;
-            })
-            .WithAutomaticReconnect()
-            .Build();
-
-        hubConnection = connection;
-
-        // Receber alterações dos pedidos
-        ordersChangedHandler = connection.On(
-            "OrdersChanged",
-            () => InvokeAsync(async () =>
-            {
-                if (!canAccess ||
-                    !accessChecked ||
-                    checkedView != view ||
-                    view != (View ?? "sala").Trim().ToLowerInvariant() ||
-                    hubConnection != connection)
-                    return;
-
-                await LoadOrders();
-                StateHasChanged();
-            }));
-
-        // Ligação perdida
-        connection.Reconnecting += _ =>
-            InvokeAsync(() =>
-            {
-                if (hubConnection != connection)
-                    return;
-
-                connectionStatus = "A reconectar...";
-                StateHasChanged();
-            });
-
-        // Ligação restabelecida
-        connection.Reconnected += _ =>
-            InvokeAsync(async () =>
-            {
-                if (hubConnection != connection)
-                    return;
-
-                connectionStatus = "Ligado";
-
-                if (canAccess &&
-                    accessChecked &&
-                    checkedView == view &&
-                    view == (View ?? "sala").Trim().ToLowerInvariant())
-                {
-                    await LoadOrders();
-                }
-
-                StateHasChanged();
-            });
-
-        // Ligação terminada
-        connection.Closed += _ =>
-            InvokeAsync(() =>
-            {
-                if (hubConnection != connection)
-                    return;
-
-                connectionStatus = "Desligado";
-                StateHasChanged();
-            });
-
-        try
-        {
-            await connection.StartAsync();
-
-            connectionStatus = "Ligado";
-
-            // Sincronizar alterações ocorridas durante a ligação
-            if (view == (View ?? "sala").Trim().ToLowerInvariant())
-            {
-                await LoadOrders();
-            }
-        }
-        catch (Exception ex)
-        {
-            connectionStatus = $"Erro ao ligar: {ex.Message}";
-        }
-    }
-
-    
-
-    public async ValueTask DisposeAsync()
-    {
-        ordersChangedHandler?.Dispose();
-
-        if (hubConnection is not null)
-        {
-            await hubConnection.DisposeAsync();
-        }
-    }
 
     private async Task LogoutAsync()
     {
@@ -577,6 +455,58 @@ else{
         Navigation.NavigateTo(
             "/login?expired=true",
             forceLoad: true);
+    }
+
+    private async Task StartSignalRAsync(string view)
+    {
+        try
+        {
+            await SignalRService.StartAsync(
+                eventName: "OrdersChanged",
+
+                onEvent: () => InvokeAsync(async () =>
+                {
+                    if (!canAccess || checkedView != view)
+                        return;
+
+                    await LoadOrders();
+                    StateHasChanged();
+                }),
+
+                tokenProvider: BrowserAuthStorage.GetTokenAsync,
+
+                onReconnected: () => InvokeAsync(async () =>
+                {
+                    if (!canAccess || checkedView != view)
+                        return;
+
+                    await LoadOrders();
+                    StateHasChanged();
+                }),
+
+                onStatusChanged: status => InvokeAsync(() =>
+                {
+                    connectionStatus = status;
+                    StateHasChanged();
+                }));
+
+            // Sincronizar alterações ocorridas durante a ligação
+            await LoadOrders();
+        }
+        catch (Exception ex)
+        {
+            connectionStatus = $"Erro ao ligar: {ex.Message}";
+        }
+    }
+
+    private Task StopSignalRAsync()
+    {
+        return SignalRService.StopAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SignalRService.StopAsync();
     }
 
 }
