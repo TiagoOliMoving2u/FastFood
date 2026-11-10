@@ -63,5 +63,39 @@ namespace FastFoodAPI.Services
                 request,
                 cancellationToken);
         }
+
+        public Task<IReadOnlyList<int>?> GetRolePermissionIdsAsync(
+            int roleId,
+            CancellationToken cancellationToken = default)
+        {
+            if (roleId <= 0)
+                throw new ArgumentException("Invalid RoleId.");
+
+            return _roleRepository.GetRolePermissionIdsAsync(
+                roleId,
+                cancellationToken);
+        }
+
+        public Task<bool> UpdateRolePermissionsAsync(
+            int roleId,
+            UpdateRolePermissionsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (roleId <= 0)
+                throw new ArgumentException("Invalid RoleId.");
+
+            if (request?.PermissionIds is null)
+                throw new ArgumentException(
+                    "PermissionIds é obrigatório.");
+
+            if (request.PermissionIds.Any(id => id <= 0))
+                throw new ArgumentException(
+                    "Uma ou mais permissões são inválidas.");
+
+            return _roleRepository.UpdateRolePermissionsAsync(
+                roleId,
+                request.PermissionIds,
+                cancellationToken);
+        }
     }
 }

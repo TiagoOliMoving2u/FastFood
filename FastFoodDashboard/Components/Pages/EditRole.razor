@@ -1,0 +1,272 @@
+﻿@page "/edit-role"
+
+@using System.Net
+@using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
+
+@inject RoleApiService RoleApiService
+@inject PermissionApiService PermissionApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+
+<PageTitle>Editar Role</PageTitle>
+
+<h3>Editar permissões de uma Role</h3>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+@if (success is not null)
+{
+    <p class="text-success">@success</p>
+}
+
+@if (loading)
+{
+    <p>A carregar Roles e permissões...</p>
+}
+else if (canEdit)
+{
+    <div class="mb-3">
+        <label>Selecionar Role</label>
+
+        <select class="form-select"
+                @bind="selectedRoleId"
+                @bind:after="OnRoleChangedAsync"
+                disabled="@saving">
+
+            <option value="0">Selecionar Role</option>
+
+            @foreach (var role in roles)
+            {
+                <option value="@role.Id">
+                    @role.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    @if (selectedRoleId > 0)
+    {
+        @if (loadingRole)
+        {
+            <p>A carregar permissões da Role...</p>
+        }
+        else
+        {
+            <h4>Permissões</h4>
+
+            @foreach (var permission in permissions)
+            {
+                <div class="form-check mb-2" @key="permission.Id">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="@($"permission-{permission.Id}")"
+                           checked="@selectedPermissions.Contains(permission.Id)"
+                           disabled="@saving"
+                           @onchange="e => TogglePermission(permission.Id, e)" />
+
+                    <label class="form-check-label"
+                           for="@($"permission-{permission.Id}")">
+                        @(permission.Description ?? permission.Code)
+
+                        <small class="text-muted">
+                            (@permission.Code)
+                        </small>
+                    </label>
+                </div>
+            }
+
+            <p>
+                Permissões selecionadas:
+                @selectedPermissions.Count
+            </p>
+
+            @if (selectedPermissions.Count == 0)
+            {
+                <p class="text-warning">
+                    Atenção: guardar assim removerá todas
+                    as permissões desta Role.
+                </p>
+            }
+
+            <button class="btn btn-primary"
+                    @onclick="SavePermissionsAsync"
+                    disabled="@saving">
+
+                @(saving ? "A guardar..." : "Guardar alterações")
+            </button>
+        }
+    }
+}
+
+@code {
+    private List<RoleDto> roles = new();
+    private List<PermissionResponse> permissions = new();
+
+    private HashSet<int> selectedPermissions = new();
+
+    private int selectedRoleId;
+
+    private bool loading = true;
+    private bool loadingRole;
+    private bool saving;
+    private bool canEdit;
+
+    private string? error;
+    private string? success;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            var myPermissions =
+                await PermissionApiService.GetMyPermissionsAsync(token);
+
+            canEdit =
+                myPermissions.Contains("roles.manage") &&
+                myPermissions.Contains("roles.view");
+
+            if (!canEdit)
+            {
+                error = "Não tens permissão para gerir Roles.";
+                return;
+            }
+
+            roles = await RoleApiService.GetRolesAsync(token);
+
+            permissions =
+                await RoleApiService.GetPermissionsAsync(token);
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar os dados: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnRoleChangedAsync()
+    {
+        error = null;
+        success = null;
+
+        selectedPermissions.Clear();
+
+        if (selectedRoleId <= 0)
+            return;
+
+        loadingRole = true;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada.";
+                return;
+            }
+
+            var rolePermissions =
+                await RoleApiService.GetRolePermissionsAsync(
+                    selectedRoleId, token);
+
+            selectedPermissions =
+                rolePermissions.PermissionIds.ToHashSet();
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar permissões: {ex.Message}";
+        }
+        finally
+        {
+            loadingRole = false;
+        }
+    }
+
+    private void TogglePermission(
+        int permissionId,
+        ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && isChecked)
+            selectedPermissions.Add(permissionId);
+        else
+            selectedPermissions.Remove(permissionId);
+    }
+
+    private async Task SavePermissionsAsync()
+    {
+        if (saving || selectedRoleId <= 0)
+            return;
+
+        error = null;
+        success = null;
+        saving = true;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada.";
+                return;
+            }
+
+            var status =
+                await RoleApiService.UpdateRolePermissionsAsync(
+                    selectedRoleId,
+                    selectedPermissions.ToList(),
+                    token);
+
+            if (status == HttpStatusCode.NoContent)
+            {
+                success = "Permissões atualizadas com sucesso!";
+            }
+            else if (status == HttpStatusCode.BadRequest)
+            {
+                error = "Verifica as permissões selecionadas.";
+            }
+            else if (status == HttpStatusCode.NotFound)
+            {
+                error = "Role não encontrada.";
+            }
+            else if (status == HttpStatusCode.Forbidden)
+            {
+                error = "Não tens permissão para editar esta Role.";
+            }
+            else if (status == HttpStatusCode.Unauthorized)
+            {
+                error = "Sessão inválida ou expirada.";
+            }
+            else
+            {
+                error = $"Erro ao guardar: HTTP {(int)status}";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

@@ -112,4 +112,52 @@ public class RoleApiService
 
         return response.StatusCode;
     }
+
+    public async Task<RolePermissionsResponse> GetRolePermissionsAsync(
+    int roleId,
+    string token)
+    {
+        var client = _httpClientFactory.CreateClient("FastFoodApi");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"api/roles/{roleId}/permissions");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<RolePermissionsResponse>()
+            ?? throw new InvalidOperationException(
+                "Resposta inválida da API.");
+    }
+
+    public async Task<HttpStatusCode> UpdateRolePermissionsAsync(
+        int roleId,
+        List<int> permissionIds,
+        string token)
+    {
+        var client = _httpClientFactory.CreateClient("FastFoodApi");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"api/roles/{roleId}/permissions")
+        {
+            Content = JsonContent.Create(new
+            {
+                PermissionIds = permissionIds
+            })
+        };
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await client.SendAsync(request);
+
+        return response.StatusCode;
+    }
 }

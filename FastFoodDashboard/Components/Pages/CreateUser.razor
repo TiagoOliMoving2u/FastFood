@@ -1,5 +1,6 @@
 ﻿@using FastFoodDashboard.Models;
 @using FastFoodDashboard.Services
+@using System.Net
 
 @inject RoleApiService RoleApiService
 @inject AuthApiService AuthApiService
@@ -9,10 +10,24 @@
 
 <PageTitle>Create User</PageTitle>
 
+<h3>Criar novo Utilizador</h3>
+
 @if (error is not null)
 {
     <p class="text-danger">@error</p>
 }
+
+@if (success is not null)
+{
+    <p class="text-success">@success</p>
+}
+
+@if (loading)
+{
+    <p>A carregar roles...</p>
+}
+else if (rolesLoaded)
+{
 
 <label>Username</label>
 <br />
@@ -35,19 +50,49 @@
 </select>
 <br />
 <button @onclick="@CreateUserAsync">Create User</button>
-
+}
 @code {
     private string? error;
+    private string? success;
+
     private string? username;
     private string? password;
     private string? confirmPassword;
+    private bool loading = true;
+    private bool rolesLoaded = false;
 
     private int selectedRole = 0;
     private List<RoleDto>? roles = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await GetRolosAsync();
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            await GetRolosAsync();
+            rolesLoaded = true;
+        }
+        catch (HttpRequestException ex)
+        {
+            error = ex.StatusCode == HttpStatusCode.Forbidden
+                ? "Não tens permissão para consultar as permissões."
+                : $"Erro ao carregar roles: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task GetRolosAsync()
