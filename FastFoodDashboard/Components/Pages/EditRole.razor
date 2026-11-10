@@ -91,6 +91,11 @@ else if (canEdit)
                 </p>
             }
 
+            <a class="btn btn-outline-secondary"
+               href="/admin/roles">
+                Voltar à gestão de Roles
+            </a>
+
             <button class="btn btn-primary"
                     @onclick="SavePermissionsAsync"
                     disabled="@saving">
@@ -102,6 +107,9 @@ else if (canEdit)
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "roleId")]
+    private int? InitialRoleId { get; set; }
+
     private List<RoleDto> roles = new();
     private List<PermissionResponse> permissions = new();
 
@@ -149,6 +157,13 @@ else if (canEdit)
 
             permissions =
                 await RoleApiService.GetPermissionsAsync(token);
+
+            if (InitialRoleId is int roleId && roles.Any(r => r.Id == roleId))
+            {
+                selectedRoleId = roleId;
+
+                await OnRoleChangedAsync();
+            }
         }
         catch (HttpRequestException ex)
         {

@@ -67,11 +67,17 @@ else if (permissionsLoaded)
         @selectedPermissions.Count
     </p>
 
+    <a class="btn btn-outline-secondary"
+       href="/admin/roles">
+        Voltar à gestão de Roles
+    </a>
+
     <button class="btn btn-primary"
             @onclick="CreateRoleAsync"
             disabled="@submitting">
         @(submitting ? "A criar..." : "Criar Role")
     </button>
+ 
 }
 
 @code {
