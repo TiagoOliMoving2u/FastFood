@@ -1,0 +1,58 @@
+﻿@using FastFoodDashboard.Models;
+@using FastFoodDashboard.Services
+
+@inject AuthApiService AuthApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+
+@page "/create-role"
+
+<PageTitle>Create Role</PageTitle>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+<label>Role Name</label>
+<input @bind="roleName" type="text" />
+
+<label>Role Description</label>
+<input @bind="roleDescription" type="text" />
+
+<button @onclick="@CreateRoleAsync">Create Role</button>
+@code {
+    private string? roleName;
+    private string? roleDescription;
+    private string? error;
+
+    private async Task CreateRoleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(roleName) || string.IsNullOrWhiteSpace(roleDescription))
+        {
+            error = "Role name and description are required.";
+        }
+
+        var token = await BrowserAuthStorage.GetTokenAsync();
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            error = "JWT de desenvolvimento não configurado.";
+            return;
+        }
+
+        var success = await AuthApiService.CreateRoleAsync(token, new CreateRoleRequest
+        {
+            Name = roleName!,
+            Description = roleDescription!
+        });
+
+        if (!success)
+        {
+            error = "Failed to create role.";
+        }
+        else
+        {
+            error = "Role created successfully!";
+        }
+    }
+}

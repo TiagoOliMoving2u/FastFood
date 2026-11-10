@@ -88,6 +88,30 @@ namespace FastFoodDashboard.Services
                     cancellationToken: cancellationToken);
         }
 
+        public async Task<bool> CreateRoleAsync(
+            string token,
+            CreateRoleRequest createRoleRequest,
+            CancellationToken cancellationToken = default)
+        {
+            var client = _httpClientFactory.CreateClient("FastFoodApi");
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "api/roles/create");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            request.Content = JsonContent.Create(createRoleRequest);
+            var response = await client.SendAsync(
+                request, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return false;
+            }
+            response.EnsureSuccessStatusCode();
+            return true;
+        }
+
         public async Task<bool> CreateUserAsync(
             string token,
             CreateUserRequest createUserRequest,

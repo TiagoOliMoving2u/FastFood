@@ -1,4 +1,5 @@
 ﻿using FastFoodAPI.Services;
+using FastFoodAPI.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,6 +30,31 @@ namespace FastFoodAPI.Controllers
                 });
             }
             return Ok(roles);
+        }
+
+        //[Authorize]
+        [HttpPost]
+        public async Task<IActionResult> CreateRole(
+            [FromBody] CreateRoleRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var created = await _roleService.CreateRoleAsync(
+                    request,
+                    cancellationToken);
+
+                if (!created)
+                    return Conflict("Já existe uma Role com esse nome.");
+
+                return StatusCode(
+                    StatusCodes.Status201Created,
+                    new { Message = "Role criada com sucesso." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
     }
 }

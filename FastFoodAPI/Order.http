@@ -1,3 +1,9 @@
+POST https://localhost:7098/api/roles
+Authorization: Bearer JWT_DO_SUPERVISOR
+Content-Type: application/json
 
-GET https://localhost:7098/api/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6ImNvemluaGEiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJLaXRjaGVuIiwianRpIjoiODNmYzQyZjctOGEwYy00OGUwLThlMGYtZmUzYmQzOGM4OGYxIiwiZXhwIjoxNzkzOTc1Mjc1LCJpc3MiOiJGYXN0Rm9vZEFQSSIsImF1ZCI6IkZhc3RGb29kQ2xpZW50cyJ9.1Musc2ySMwW2TGfes1iiwgMdiXPOUP2AXngO1zUcK5o
+{
+  "name": "Manager",
+  "description": "Gestor do restaurante",
+  "permissionIds": [1, 3, 5]
+}
