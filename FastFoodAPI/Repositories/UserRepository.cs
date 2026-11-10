@@ -77,7 +77,7 @@ namespace FastFoodAPI.Repositories
 
             var normalizedUsername =
                 username.Trim().ToUpperInvariant();
-
+            Console.WriteLine($"Normalized Username: {normalizedUsername}");
             return await connection.QuerySingleOrDefaultAsync<User>(
                 new CommandDefinition(
                     sql,

@@ -21,6 +21,7 @@ builder.Services.AddScoped<ProtectedLocalStorage>();
 builder.Services.AddScoped<BrowserAuthStorage>();
 builder.Services.AddScoped<AuthApiService>();
 builder.Services.AddScoped<RoleApiService>();
+builder.Services.AddScoped<PermissionApiService>();
 // Adicionar o serviço SignalRService como transient para que seja criado uma nova instância a cada injeção de dependência
 builder.Services.AddTransient<SignalRService>();
 

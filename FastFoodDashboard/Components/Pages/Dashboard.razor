@@ -11,6 +11,7 @@
 @inject AuthApiService AuthApiService
 @inject NavigationManager Navigation
 @inject SignalRService SignalRService
+@inject PermissionApiService PermissionApiService
 @implements IAsyncDisposable
 
 
@@ -102,14 +103,20 @@ else{
                                         <p>@item.ToString()</p>
                                     }
 
-                                    @if (dashboardConfig.CanReturnOrders.Contains(order.State))
+                                    @if (CanChangeOrderState(order, -1))
                                     {
-                                        <button @onclick="() => NextState(order.Id, -1)">Voltar</button>
+                                        <button class="btn btn-secondary"
+                                                @onclick="() => NextState(order.Id, -1)">
+                                            Voltar
+                                        </button>
                                     }
 
-                                    @if (dashboardConfig.CanAdvanceOrders.Contains(order.State))
+                                    @if (CanChangeOrderState(order, 1))
                                     {
-                                    <button @onclick="() => NextState(order.Id, 1)">Avançar</button>
+                                        <button class="btn btn-primary"
+                                                @onclick="() => NextState(order.Id, 1)">
+                                            Avançar
+                                        </button>
                                     }
 
                                 </article>
@@ -132,6 +139,8 @@ else{
     private DashboardConfig? dashboardConfig;
 
     private List<OrderDto> orders = new();
+
+    private HashSet<string> userPermissions = new(StringComparer.OrdinalIgnoreCase);
 
     private IDisposable? ordersChangedHandler;
 
@@ -161,9 +170,7 @@ else{
                 Title = "Dashboard - Sala",
                 AreaId = 1,
                 VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false,
-                CanAdvanceOrders = [],
-                CanReturnOrders = []
+                ShowAreaName = false
             },
 
             "esplanada" => new DashboardConfig
@@ -171,9 +178,7 @@ else{
                 Title = "Dashboard - Esplanada",
                 AreaId = 2,
                 VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false,
-                CanAdvanceOrders = [],
-                CanReturnOrders = []
+                ShowAreaName = false
             },
 
             "cozinha" => new DashboardConfig
@@ -181,18 +186,14 @@ else{
                 Title = "Dashboard - Cozinha",
                 AreaId = null,
                 VisibleStates = [1, 2, 3],
-                ShowAreaName = true,
-                CanAdvanceOrders = [1, 2],
-                CanReturnOrders = [2, 3]
+                ShowAreaName = true
             },
             "balcao" => new DashboardConfig
             {
                 Title = "Dashboard - Balcão",
                 AreaId = null,
                 VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = true,
-                CanAdvanceOrders = [3],
-                CanReturnOrders = [4]
+                ShowAreaName = true
             },
             _ => null
         };
@@ -414,12 +415,21 @@ else{
 
     private async Task<bool> CanAccessDashboardAsync(string view)
     {
-        // Dashboards públicos
-        if (view is "sala" or "esplanada")
+        var dashboard = (view ?? "")
+        .Trim()
+        .ToLowerInvariant();
+
+        if (dashboard is "sala" or "esplanada")
             return true;
 
-        // Rejeitar páginas desconhecidas
-        if (view is not ("cozinha" or "balcao"))
+        string? requiredPermission = dashboard switch
+        {
+            "cozinha" => "dashboards.kitchen.view",
+            "balcao" => "dashboards.counter.view",
+            _ => null
+        };
+
+        if (requiredPermission is null)
             return false;
 
         // Recuperar o JWT
@@ -428,23 +438,54 @@ else{
         if (string.IsNullOrWhiteSpace(token))
             return false;
 
-        // A FastFoodAPI valida o JWT e devolve a Role
-        var user = await AuthApiService.GetCurrentUserAsync(token);
+        try
+        {
+            var permissions =
+                await PermissionApiService.GetMyPermissionsAsync(token);
 
-        if (user is null)
+            userPermissions = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return userPermissions.Contains(requiredPermission);
+        }
+        catch (HttpRequestException)
+        {
+            return false;
+        }
+    }
+
+    private bool CanChangeOrderState(
+        OrderDto order,
+        int operation)
+    {
+        // Apenas dashboards internos podem alterar pedidos
+        var dashboard = (View ?? "")
+            .Trim()
+            .ToLowerInvariant();
+
+        if (!canAccess ||
+            dashboard is not ("cozinha" or "balcao"))
+        {
+            return false;
+        }
+
+        if (operation is not (1 or -1))
             return false;
 
-        return view switch
-        {
-            "cozinha" =>
-                user.Role is "Kitchen" or "KitchenSupervisor",
+        int currentState = (int)order.State;
+        int nextState = currentState + operation;
 
-            "balcao" =>
-                user.Role is "Counter" or "KitchenSupervisor",
+        // Validar os limites dos estados
+        if (nextState < 1 || nextState > 4)
+            return false;
 
-            _ => false
-        };
+        // Construir o código da permissão necessária
+        string permissionCode =
+            $"orders.transition.{currentState}.{nextState}";
+
+        // Verificar se o utilizador tem essa permissão
+        return userPermissions.Contains(permissionCode);
     }
+
 
     private async Task SessionExpiredAsync()
     {

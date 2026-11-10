@@ -109,7 +109,7 @@ namespace FastFoodAPI.Controllers
 
         //--- Put: api/orders/{id}
 
-        [Authorize(Policy = "CanUpdateOrders")]
+        [Authorize]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromQuery] int operation,CancellationToken cancellationToken)
         {

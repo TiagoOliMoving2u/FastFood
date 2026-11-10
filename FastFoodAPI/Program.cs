@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using FastFoodAPI.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,10 +29,14 @@ builder.Services.AddScoped<RoleRepository>();
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
+builder.Services.AddScoped<
+    IAuthorizationHandler,
+    PermissionHandler>();
 
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<PermissionService>();
 
 
 builder.Services.AddSignalR();
@@ -100,15 +106,29 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CanResetSystem", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireRole("KitchenSupervisor");
+        policy.AddRequirements(
+            new PermissionRequirement("system.reset"));
     });
 
-    options.AddPolicy("CanUpdateOrders", policy =>
+    options.AddPolicy("CanCreateUsers", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireRole("Kitchen",
-                            "Counter",
-                            "KitchenSupervisor");
+        policy.AddRequirements(
+            new PermissionRequirement("users.create"));
+    });
+
+    options.AddPolicy("CanViewRoles", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(
+            new PermissionRequirement("roles.view"));
+    });
+
+    options.AddPolicy("CanManageRoles", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(
+            new PermissionRequirement("roles.manage"));
     });
 });
 

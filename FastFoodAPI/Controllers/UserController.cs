@@ -50,6 +50,8 @@ public class UserController : ControllerBase
             request.Username,
             request.Password);
 
+        Console.Write($"Authenticated user: {user?.Username}");
+
         if (user is null)
         {
             return Unauthorized(new
@@ -57,8 +59,8 @@ public class UserController : ControllerBase
                 Message = "Username ou password inválidos."
             });
         }
+        Console.WriteLine("Passou");
 
-        
 
         var expires = DateTime.UtcNow.AddMinutes(15);
 
@@ -119,7 +121,7 @@ public class UserController : ControllerBase
     }
 
 
-    [Authorize]
+    [Authorize(Policy = "CanCreateUsers")]
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser(
         [FromBody] CreateUserRequest request)

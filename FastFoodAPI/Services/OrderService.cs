@@ -10,13 +10,16 @@ namespace FastFoodAPI.Services
     {
         private readonly OrderRepository _orderRepository;
         private readonly MenuItemRepository _menuItemRepository;
+        private readonly PermissionService _permissionService;
 
         public OrderService(
             OrderRepository orderRepository,
-            MenuItemRepository menuItemRepository)
+            MenuItemRepository menuItemRepository,
+            PermissionService permissionService)
         {
             _orderRepository = orderRepository;
             _menuItemRepository = menuItemRepository;
+            _permissionService = permissionService;
         }
 
         //Getters
@@ -138,64 +141,75 @@ namespace FastFoodAPI.Services
         //PUTs (atualziar)
 
         public async Task<OrderResponse> UpdateOrderAsync(
-            int id,
-            int operation,
-            ClaimsPrincipal user,
-            CancellationToken cancellationToken)
+    int id,
+    int operation,
+    ClaimsPrincipal user,
+    CancellationToken cancellationToken)
         {
+            // 1. Validar os parâmetros
             if (id <= 0)
-            {
                 throw new ArgumentException("Invalid order ID.");
-            }
 
-            if (operation != -1 && operation != 1)
-                throw new ArgumentException("State just can increment or decrement 1 unit each time.");
+            if (operation is not (1 or -1))
+                throw new ArgumentException(
+                    "State can only increment or decrement by 1.");
 
-            var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+            // 2. Identificar o funcionário autenticado
+            if (user.Identity?.IsAuthenticated != true)
+                throw new UnauthorizedAccessException(
+                    "User is not authenticated.");
+
+            var userIdClaim =
+                user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? user.FindFirstValue("sub");
+
+            if (!int.TryParse(userIdClaim, out int userId) || userId <= 0)
+                throw new UnauthorizedAccessException(
+                    "Invalid user identity.");
+
+            // 3. Consultar o pedido
+            var order = await _orderRepository.GetByIdAsync(
+                id, cancellationToken);
 
             if (order is null)
-            {
                 throw new ArgumentException("Order not found.");
-            }
 
-            var nextState = (OrderState)((int)order.State + operation);
+            // 4. Calcular e validar o próximo estado
+            var nextState =
+                (OrderState)((int)order.State + operation);
 
             if (!Enum.IsDefined(nextState))
-            {
-                throw new ArgumentException("Order has no next state.");
-            }
+                throw new ArgumentException(
+                    "Order has no valid next state.");
 
-            bool kitchenTransition =
-                (operation == 1 && ((int)order.State == 1 || (int)order.State == 2))
-                ||
-                (operation == -1 && ((int)order.State == 2 || (int)order.State == 3));
+            // 5. Construir o código da permissão
+            string permissionCode =
+                $"orders.transition.{(int)order.State}.{(int)nextState}";
 
-            bool counterTransition =
-                (operation == 1 && (int)order.State == 3)
-                ||
-                (operation == -1 && (int)order.State == 4);
-
-            bool allowed =
-                (user.IsInRole("Kitchen") && kitchenTransition)
-                ||
-                (user.IsInRole("Counter") && counterTransition)
-                ||
-                (user.IsInRole("KitchenSupervisor")
-                    && (kitchenTransition || counterTransition));
+            // 6. Verificar a permissão na base de dados
+            bool allowed = await _permissionService.HasPermissionAsync(
+                userId,
+                permissionCode,
+                cancellationToken);
 
             if (!allowed)
-                throw new UnauthorizedAccessException("User is not authorized to update this order.");
+                throw new UnauthorizedAccessException(
+                    "User is not authorized to update this order.");
 
-            var updatedOrder = await _orderRepository.UpdateOrderStateAsync(id, order.State, nextState, cancellationToken);
+            // 7. Atualizar o estado do pedido
+            var updatedOrder = await _orderRepository.UpdateOrderStateAsync(
+                id,
+                order.State,
+                nextState,
+                cancellationToken);
 
             if (updatedOrder is null)
-            {
-                throw new ArgumentException("Failed to update order state.");
-            }
+                throw new ArgumentException(
+                    "Failed to update order state.");
 
             return updatedOrder;
         }
 
-        
+
     }
 }

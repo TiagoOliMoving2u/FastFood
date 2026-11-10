@@ -16,7 +16,7 @@ namespace FastFoodAPI.Controllers
             _roleService = roleService;
         }
 
-        [Authorize]
+        [Authorize(Policy = "CanViewRoles")]
         [HttpGet]
         public async Task<IActionResult> GetRolesAsync(
             CancellationToken cancellationToken = default)
@@ -32,7 +32,7 @@ namespace FastFoodAPI.Controllers
             return Ok(roles);
         }
 
-        //[Authorize]
+        [Authorize(Policy = "CanManageRoles")]
         [HttpPost]
         public async Task<IActionResult> CreateRole(
             [FromBody] CreateRoleRequest request,

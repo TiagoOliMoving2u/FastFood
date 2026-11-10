@@ -77,7 +77,7 @@ namespace FastFoodAPI.Services
                 user,
                 user.PasswordHash,
                 password);
-
+            Console.WriteLine($"Password verification result: {result}");
             if (result == PasswordVerificationResult.Failed)
                 return null;
 
