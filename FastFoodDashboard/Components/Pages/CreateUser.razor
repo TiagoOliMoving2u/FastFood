@@ -1,6 +1,7 @@
 ﻿@using FastFoodDashboard.Models;
 @using FastFoodDashboard.Services
 
+@inject RoleApiService RoleApiService
 @inject AuthApiService AuthApiService
 @inject BrowserAuthStorage BrowserAuthStorage
 
@@ -61,7 +62,7 @@
                 return;
             }
 
-            roles = await AuthApiService.GetRolesAsync(token);
+            roles = await RoleApiService.GetRolesAsync(token);
         }
         catch (Exception ex)
         {

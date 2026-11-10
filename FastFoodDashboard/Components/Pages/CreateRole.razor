@@ -1,58 +1,198 @@
-﻿@using FastFoodDashboard.Models;
+﻿@page "/create-role"
+
+@using System.Net
+@using FastFoodDashboard.Models
 @using FastFoodDashboard.Services
 
-@inject AuthApiService AuthApiService
+@inject RoleApiService RoleApiService
 @inject BrowserAuthStorage BrowserAuthStorage
 
-@page "/create-role"
+<PageTitle>Criar Role</PageTitle>
 
-<PageTitle>Create Role</PageTitle>
+<h3>Criar nova Role</h3>
 
 @if (error is not null)
 {
     <p class="text-danger">@error</p>
 }
 
-<label>Role Name</label>
-<input @bind="roleName" type="text" />
+@if (success is not null)
+{
+    <p class="text-success">@success</p>
+}
 
-<label>Role Description</label>
-<input @bind="roleDescription" type="text" />
+@if (loading)
+{
+    <p>A carregar permissões...</p>
+}
+else if (permissionsLoaded)
+{
+    <div class="mb-3">
+        <label>Nome da Role</label>
+        <input class="form-control"
+               @bind="role.Name"
+               maxlength="50" />
+    </div>
 
-<button @onclick="@CreateRoleAsync">Create Role</button>
+    <div class="mb-3">
+        <label>Descrição</label>
+        <textarea class="form-control"
+                  @bind="role.Description"
+                  maxlength="200"></textarea>
+    </div>
+
+    <h4>Permissões</h4>
+
+    @foreach (var permission in permissions)
+    {
+        <div class="form-check mb-2" @key="permission.Id">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="@($"permission-{permission.Id}")"
+                   checked="@selectedPermissions.Contains(permission.Id)"
+                   @onchange="e => TogglePermission(permission.Id, e)" />
+
+            <label class="form-check-label"
+                   for="@($"permission-{permission.Id}")">
+                @permission.Description
+                <small class="text-muted">
+                    (@permission.Code)
+                </small>
+            </label>
+        </div>
+    }
+
+    <p>
+        Permissões selecionadas:
+        @selectedPermissions.Count
+    </p>
+
+    <button class="btn btn-primary"
+            @onclick="CreateRoleAsync"
+            disabled="@submitting">
+        @(submitting ? "A criar..." : "Criar Role")
+    </button>
+}
+
 @code {
-    private string? roleName;
-    private string? roleDescription;
+    private CreateRoleRequest role = new();
+
+    private List<PermissionResponse> permissions = new();
+
+    private HashSet<int> selectedPermissions = new();
+
+    private bool loading = true;
+    private bool permissionsLoaded;
+    private bool submitting;
+
     private string? error;
+    private string? success;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            permissions = await RoleApiService.GetPermissionsAsync(token);
+            permissionsLoaded = true;
+        }
+        catch (HttpRequestException ex)
+        {
+            error = ex.StatusCode == HttpStatusCode.Forbidden
+                ? "Não tens permissão para consultar as permissões."
+                : $"Erro ao carregar permissões: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void TogglePermission(int permissionId, ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && isChecked)
+            selectedPermissions.Add(permissionId);
+        else
+            selectedPermissions.Remove(permissionId);
+    }
 
     private async Task CreateRoleAsync()
     {
-        if (string.IsNullOrWhiteSpace(roleName) || string.IsNullOrWhiteSpace(roleDescription))
-        {
-            error = "Role name and description are required.";
-        }
+        if (submitting)
+            return;
 
-        var token = await BrowserAuthStorage.GetTokenAsync();
+        error = null;
+        success = null;
 
-        if (string.IsNullOrWhiteSpace(token))
+        if (string.IsNullOrWhiteSpace(role.Name))
         {
-            error = "JWT de desenvolvimento não configurado.";
+            error = "O nome da Role é obrigatório.";
             return;
         }
 
-        var success = await AuthApiService.CreateRoleAsync(token, new CreateRoleRequest
-        {
-            Name = roleName!,
-            Description = roleDescription!
-        });
+        submitting = true;
 
-        if (!success)
+        try
         {
-            error = "Failed to create role.";
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            role.PermissionIds = selectedPermissions.ToList();
+
+            var status = await RoleApiService.CreateRoleAsync(
+                role, token);
+
+            if (status == HttpStatusCode.Created)
+            {
+                success = "Role criada com sucesso!";
+
+                role = new();
+                selectedPermissions.Clear();
+            }
+            else if (status == HttpStatusCode.Conflict)
+            {
+                error = "Já existe uma Role com esse nome.";
+            }
+            else if (status == HttpStatusCode.BadRequest)
+            {
+                error = "Verifica os dados ou as permissões selecionadas.";
+            }
+            else if (status == HttpStatusCode.Unauthorized)
+            {
+                error = "Sessão inválida ou expirada.";
+            }
+            else if (status == HttpStatusCode.Forbidden)
+            {
+                error = "Não tens permissão para criar Roles.";
+            }
+            else
+            {
+                error = $"Erro ao criar Role: HTTP {(int)status}";
+            }
         }
-        else
+        catch (HttpRequestException ex)
         {
-            error = "Role created successfully!";
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        finally
+        {
+            submitting = false;
         }
     }
 }
