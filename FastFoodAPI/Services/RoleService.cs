@@ -113,5 +113,28 @@ namespace FastFoodAPI.Services
                 request,
                 cancellationToken);
         }
+
+        public async Task<bool> UpdateRoleDetailsAsync(
+            int id,
+            UpdateRoleDetailsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (id <= 0)
+                throw new ArgumentException("Invalid RoleId.");
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new ArgumentException("O nome da Role é obrigatório.");
+            request.Name = request.Name.Trim();
+            request.Description = request.Description.Trim();
+            if (request.Name.Length > 50)
+                throw new ArgumentException(
+                    "O nome da Role não pode ultrapassar 50 caracteres.");
+            if (request.Description?.Length > 200)
+                throw new ArgumentException(
+                    "A descrição não pode ultrapassar 200 caracteres.");
+            return await _roleRepository.UpdateRoleDetailsAsync(
+                id,
+                request,
+                cancellationToken);
+        }
     }
 }

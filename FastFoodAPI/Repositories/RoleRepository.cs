@@ -328,5 +328,30 @@ namespace FastFoodAPI.Repositories
                     cancellationToken: cancellationToken));
             return rowsAffected > 0;
         }
+
+        public async Task<bool> UpdateRoleDetailsAsync(
+            int id,
+            UpdateRoleDetailsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                UPDATE dbo.Roles
+                SET Name = @Name, Description = @Description
+                WHERE Id = @RoleId;
+                """;
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        RoleId = id,
+                        Name = request.Name,
+                        Description = request.Description
+                    },
+                    cancellationToken: cancellationToken));
+            return rowsAffected > 0;
+        }
     }
 }

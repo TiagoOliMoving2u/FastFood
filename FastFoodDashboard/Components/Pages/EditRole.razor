@@ -55,6 +55,56 @@ else if (canEdit)
         }
         else
         {
+
+            
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">Informações da Role</h5>
+                </div>
+
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Nome
+                        </label>
+
+                        <input class="form-control"
+                               type="text"
+                               maxlength="50"
+                               @bind="editName"
+                               disabled="@savingDetails" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Descrição
+                        </label>
+
+                        <textarea class="form-control"
+                                  rows="3"
+                                  maxlength="200"
+                                  @bind="editDescription"
+                                  disabled="@savingDetails">
+            </textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-primary"
+                                @onclick="SaveRoleDetailsAsync"
+                                disabled="@(savingDetails || string.IsNullOrWhiteSpace(editName))">
+
+                            @(savingDetails
+                                ? "A guardar..."
+                                : "Guardar informações")
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+
             <h4>Permissões</h4>
 
             @foreach (var permission in permissions)
@@ -125,6 +175,11 @@ else if (canEdit)
     private string? error;
     private string? success;
 
+    private string editName = string.Empty;
+    private string? editDescription;
+
+    private bool savingDetails = false;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -187,6 +242,15 @@ else if (canEdit)
             return;
 
         loadingRole = true;
+
+        var selectedRole = roles.FirstOrDefault(
+            r => r.Id == selectedRoleId);
+
+        if (selectedRole is not null)
+        {
+            editName = selectedRole.Name;
+            editDescription = selectedRole.Description;
+        }
 
         try
         {
@@ -282,6 +346,63 @@ else if (canEdit)
         finally
         {
             saving = false;
+        }
+    }
+
+    private async Task SaveRoleDetailsAsync()
+    {
+        if (savingDetails || selectedRoleId <= 0)
+            return;
+        error = null;
+        success = null;
+        savingDetails = true;
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada.";
+                return;
+            }
+            var status =
+                await RoleApiService.UpdateRoleDetailsAsync(
+                    selectedRoleId,
+                    editName,
+                    editDescription,
+                    token);
+            if (status == HttpStatusCode.NoContent)
+            {
+                success = "Informações da Role atualizadas com sucesso!";
+                roles = await RoleApiService.GetRolesAsync(token);
+            }
+            else if (status == HttpStatusCode.BadRequest)
+            {
+                error = "Verifica os dados introduzidos.";
+            }
+            else if (status == HttpStatusCode.NotFound)
+            {
+                error = "Role não encontrada.";
+            }
+            else if (status == HttpStatusCode.Forbidden)
+            {
+                error = "Não tens permissão para editar esta Role.";
+            }
+            else if (status == HttpStatusCode.Unauthorized)
+            {
+                error = "Sessão inválida ou expirada.";
+            }
+            else
+            {
+                error = $"Erro ao guardar: HTTP {(int)status}";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        finally
+        {
+            savingDetails = false;
         }
     }
 }

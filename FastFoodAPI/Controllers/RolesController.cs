@@ -125,5 +125,28 @@ namespace FastFoodAPI.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        [Authorize(Policy = "CanManageRoles")]
+        [HttpPut("{id:int}/details")]
+        public async Task<IActionResult> UpdateRoleDetails(
+            int id,
+            [FromBody] UpdateRoleDetailsRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var updated = await _roleService.UpdateRoleDetailsAsync(
+                    id,
+                    request,
+                    cancellationToken);
+                if (!updated)
+                    return NotFound("Role não encontrada.");
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

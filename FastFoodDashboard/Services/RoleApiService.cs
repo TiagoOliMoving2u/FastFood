@@ -186,4 +186,28 @@ public class RoleApiService
 
         return response.StatusCode;
     }
+
+    public async Task<HttpStatusCode> UpdateRoleDetailsAsync(
+        int roleId,
+        string name,
+        string description,
+        string token)
+    {
+        var client = _httpClientFactory.CreateClient("FastFoodApi");
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"api/roles/{roleId}/details")
+        {
+            Content = JsonContent.Create(new
+            {
+                Id = roleId,
+                Name = name,
+                Description = description
+            })
+        };
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request);
+        return response.StatusCode;
+    }
 }
