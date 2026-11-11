@@ -85,7 +85,7 @@ else if (rolesLoaded)
         catch (HttpRequestException ex)
         {
             error = ex.StatusCode == HttpStatusCode.Forbidden
-                ? "Não tens permissão para consultar as permissões."
+                ? "Não tens permissão para criar utilizadores."
                 : $"Erro ao carregar roles: {ex.Message}";
         }
         finally
@@ -173,7 +173,8 @@ else if (rolesLoaded)
 
             await AuthApiService.CreateUserAsync(token, createUserRequest);
 
-            error = "Utilizador criado com sucesso!";
+            success = "Utilizador criado com sucesso!";
+            error = "";
         }
         catch (Exception ex)
         {

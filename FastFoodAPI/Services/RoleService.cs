@@ -14,9 +14,10 @@ namespace FastFoodAPI.Services
         }
 
         public async Task<List<Role>?> GetRolesAsync(
+            bool? inactiveToo,
             CancellationToken cancellationToken = default)
         {
-            return await _roleRepository.GetRolesAsync(cancellationToken);
+            return await _roleRepository.GetRolesAsync(inactiveToo, cancellationToken);
         }
 
         /*
@@ -95,6 +96,21 @@ namespace FastFoodAPI.Services
             return _roleRepository.UpdateRolePermissionsAsync(
                 roleId,
                 request.PermissionIds,
+                cancellationToken);
+        }
+
+        public async Task<bool> UpdateRoleStateAsync(
+            UpdateRoleStateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (request.Id <= 0)
+                throw new ArgumentException("Invalid RoleId.");
+
+            if(request.IsActive != 0 && request.IsActive != 1)
+                throw new ArgumentException("Invalid IsActive value.");
+
+            return await _roleRepository.UpdateRoleStateAsync(
+                request,
                 cancellationToken);
         }
     }

@@ -19,9 +19,10 @@ namespace FastFoodAPI.Controllers
         [Authorize(Policy = "CanViewRoles")]
         [HttpGet]
         public async Task<IActionResult> GetRolesAsync(
+            [FromQuery] bool? inactiveToo = false,
             CancellationToken cancellationToken = default)
         {
-            var roles = await _roleService.GetRolesAsync(cancellationToken);
+            var roles = await _roleService.GetRolesAsync(inactiveToo, cancellationToken);
             if (roles is null || !roles.Any())
             {
                 return NotFound(new
@@ -97,6 +98,27 @@ namespace FastFoodAPI.Controllers
                 return StatusCode(
                     StatusCodes.Status201Created,
                     new { Message = "Role criada com sucesso." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize(Policy = "CanManageRoles")]
+        [HttpPut("{id:int}/state")]
+        public async Task<IActionResult> UpdateRoleState(
+            [FromBody] UpdateRoleStateRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var updated = await _roleService.UpdateRoleStateAsync(                    
+                    request,
+                    cancellationToken);
+                if (!updated)
+                    return NotFound("Role não encontrada.");
+                return NoContent();
             }
             catch (ArgumentException ex)
             {

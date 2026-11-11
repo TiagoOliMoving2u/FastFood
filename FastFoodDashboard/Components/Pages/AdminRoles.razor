@@ -42,6 +42,7 @@ else if (canView)
                     <th>ID</th>
                     <th>Nome</th>
                     <th>Ações</th>
+                    <th>Estado</th>
                 </tr>
             </thead>
 
@@ -58,6 +59,16 @@ else if (canView)
                                    href="@($"/edit-role?roleId={role.Id}")">
                                     Editar permissões
                                 </a>
+                            }
+                        </td>
+                        <td>
+                            @if (role.IsActive == 1)
+                            {
+                                <button @onclick="() => UpdateRoleStatusAsync(role)" class="btn btn-sm btn-outline-primary">Ativa</button>
+                            }
+                            else
+                            {
+                                <button @onclick="() => UpdateRoleStatusAsync(role)" class="btn btn-sm btn-outline-secondary">Inativa</button>
                             }
                         </td>
                     </tr>
@@ -116,6 +127,33 @@ else if (canView)
         {
             loading = false;
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task UpdateRoleStatusAsync(RoleDto role)
+    {
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+            if (role.IsActive == 1)
+            {
+                await RoleApiService.UpdateStateRoleAsync(role.Id, 0, token);
+                role.IsActive = 0;
+            }
+            else
+            {
+                await RoleApiService.UpdateStateRoleAsync(role.Id, 1, token);
+                role.IsActive = 1;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao atualizar o estado da Role: {ex.Message}";
         }
     }
 }

@@ -1,7 +1,8 @@
 ﻿using Dapper;
+using FastFoodAPI.Data;
 using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
-using FastFoodAPI.Data;
+using System.Text;
 
 namespace FastFoodAPI.Repositories
 {
@@ -16,22 +17,32 @@ namespace FastFoodAPI.Repositories
         }
 
         public async Task<List<Role>?> GetRolesAsync(
+            bool? inactiveToo,
             CancellationToken cancellationToken = default)
         {
             await using var connection = _factory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
-            const string sql = """
+            var sql = new StringBuilder( """
             SELECT
                 r.Id,
                 r.Name,
                 r.Description,
                 r.IsActive
             FROM dbo.Roles r
-            WHERE r.IsActive = 1;
-            """;
+            WHERE 1 = 1
+            """);
+
+
+            if (inactiveToo == false)
+            {
+                sql.AppendLine(" AND r.IsActive = 1");
+            }
+
+            sql.AppendLine(" ORDER BY r.Id;");
+
             return (await connection.QueryAsync<Role>(
                 new CommandDefinition(
-                    sql,
+                    sql.ToString(),
                     cancellationToken: cancellationToken))).ToList();
         }
 
@@ -293,6 +304,29 @@ namespace FastFoodAPI.Repositories
             await transaction.CommitAsync(cancellationToken);
 
             return true;
+        }
+
+        public async Task<bool> UpdateRoleStateAsync(
+            UpdateRoleStateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                UPDATE dbo.Roles
+                SET IsActive = @IsActive
+                WHERE Id = @RoleId AND IsActive != @IsActive;
+                """;
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        RoleId = request.Id,
+                        IsActive = request.IsActive
+                    },
+                    cancellationToken: cancellationToken));
+            return rowsAffected > 0;
         }
     }
 }

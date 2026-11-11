@@ -23,7 +23,7 @@ public class RoleApiService
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            "api/roles");
+            "api/roles?inactiveToo=true");
 
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
@@ -150,6 +150,32 @@ public class RoleApiService
             Content = JsonContent.Create(new
             {
                 PermissionIds = permissionIds
+            })
+        };
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await client.SendAsync(request);
+
+        return response.StatusCode;
+    }
+
+    public async Task<HttpStatusCode> UpdateStateRoleAsync(
+        int roleId,
+        int isActive,
+        string token)
+    {
+        var client = _httpClientFactory.CreateClient("FastFoodApi");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"api/roles/{roleId}/state")
+        {
+            Content = JsonContent.Create(new
+            {
+                Id = roleId,
+                IsActive = isActive
             })
         };
 
