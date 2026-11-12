@@ -1,0 +1,167 @@
+﻿@page "/admin/users"
+
+@using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
+
+@inject PermissionApiService PermissionApiService
+@inject AuthApiService AuthApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+
+<PageTitle>Gestão de Utilizadores</PageTitle>
+
+<h3>Gestão de Utilizadores</h3>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+@if (loading)
+{
+    <p>A carregar Utilizadores...</p>
+}
+else if (canView)
+{
+    @if (canManage)
+    {
+        <a class="btn btn-primary mb-3"
+           href="/create-user">
+            + Novo Utilizador
+        </a>
+    }
+
+    @if (users.Count == 0)
+    {
+        <p>Não existem Utilizadores registados.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Role</th>
+                    @if (canManage)
+                    {
+                        <th>Ações</th>
+                    }
+                    <th>Estado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.Id</td>
+                        <td>@user.Username</td>
+                        <td>@user.RoleName</td>
+                        @if (canManage)
+                        {
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary"
+                                   href="@($"/edit-user?userId={user.Id}")">
+                                    Editar permissões
+                                </a>
+                        </td>
+                        }
+                        <td>
+                            @if (user.IsActive == 1)
+                            {
+                                <button @onclick="() => UpdateUserStatusAsync(user)" class="btn btn-sm btn-outline-primary">Ativo</button>
+                            }
+                            else
+                            {
+                                <button @onclick="() => UpdateUserStatusAsync(user)" class="btn btn-sm btn-outline-secondary">Inativo</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<UserResponse> users = new List<UserResponse>();
+
+    private bool loading = true;
+    private bool canView;
+    private bool canManage;
+
+    private string? error;
+
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var token =
+                await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            var permissions =
+                await PermissionApiService.GetMyPermissionsAsync(
+                    token);
+
+            canView = permissions.Contains("users.view");
+            canManage = permissions.Contains("users.manage");
+
+            if (!canView)
+            {
+                error = "Não tens permissão para consultar Utilizadores.";
+                return;
+            }
+
+            users = await AuthApiService.GetAllUsersAsync(token);
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar Utilizadores: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task UpdateUserStatusAsync(UserResponse user)
+    {
+        @if (canManage)
+        {
+            try
+            {
+                var token = await BrowserAuthStorage.GetTokenAsync();
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    error = "Sessão expirada. Faz login novamente.";
+                    return;
+                }
+                if (user.IsActive == 1)
+                {
+                    //await AuthApiService.UpdateStateUserAsync(user.Id, 0, token);
+                    user.IsActive = 0;
+                }
+                else
+                {
+                    //await AuthApiService.UpdateStateUserAsync(user.Id, 1, token);
+                    user.IsActive = 1;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                error = $"Erro ao atualizar o estado da Role: {ex.Message}";
+            }
+        }
+    }
+}

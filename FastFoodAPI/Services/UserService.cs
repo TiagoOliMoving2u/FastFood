@@ -1,6 +1,7 @@
 ﻿using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
 using Microsoft.AspNetCore.Identity;
+using FastFoodAPI.DTOs;
 
 namespace FastFoodAPI.Services
 {
@@ -15,6 +16,12 @@ namespace FastFoodAPI.Services
         {
             _userRepository = userRepository;
             _passwordHasher = passwordHasher;
+        }
+
+        public async Task<IReadOnlyList<UserResponse>> GetAllUsersAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await _userRepository.GetAllAsync(cancellationToken);
         }
 
         public async Task<int?> CreateUserAsync(

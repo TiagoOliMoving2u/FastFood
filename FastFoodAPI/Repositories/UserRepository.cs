@@ -88,6 +88,29 @@ namespace FastFoodAPI.Repositories
                     cancellationToken: cancellationToken));
         }
 
-        
+        public async Task<IReadOnlyList<UserResponse>> GetAllAsync(
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+            SELECT
+                u.Id,
+                u.Username,
+                u.RoleId,
+                r.Name AS RoleName,
+                u.IsActive
+            FROM dbo.Users u
+            INNER JOIN dbo.Roles r
+                ON u.RoleId = r.Id;
+            """;
+            var users = await connection.QueryAsync<UserResponse>(
+                new CommandDefinition(
+                    sql,
+                    cancellationToken: cancellationToken));
+            return users.AsList();
+        }
+
+
     }
 }

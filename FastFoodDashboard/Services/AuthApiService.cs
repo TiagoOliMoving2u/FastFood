@@ -1,4 +1,5 @@
 ﻿using FastFoodDashboard.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Net;
 using System.Net.Http.Headers;
 
@@ -11,6 +12,27 @@ namespace FastFoodDashboard.Services
         public AuthApiService(IHttpClientFactory httpClientFactory)
         {
             _httpClientFactory = httpClientFactory;
+        }
+
+        public async Task<IReadOnlyList<UserResponse>?> GetAllUsersAsync(string token,
+            CancellationToken cancellationToken = default)
+        {
+            var client = _httpClientFactory.CreateClient("FastFoodApi");
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                "api/user");
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            using var response = await client.SendAsync(
+                request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            return await response.Content.ReadFromJsonAsync<List<UserResponse>>() ?? new List<UserResponse>();
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest loginRequest)

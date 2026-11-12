@@ -110,11 +110,18 @@ builder.Services.AddAuthorization(options =>
             new PermissionRequirement("system.reset"));
     });
 
-    options.AddPolicy("CanCreateUsers", policy =>
+    options.AddPolicy("CanViewUsers", policy =>
     {
         policy.RequireAuthenticatedUser();
         policy.AddRequirements(
-            new PermissionRequirement("users.create"));
+            new PermissionRequirement("users.view"));
+    });
+
+    options.AddPolicy("CanManageUsers", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(
+            new PermissionRequirement("users.manage"));
     });
 
     options.AddPolicy("CanViewRoles", policy =>

@@ -34,6 +34,14 @@ public class UserController : ControllerBase
         _userService = userService;
     }
 
+    [Authorize(Policy = "CanViewUsers")]
+    [HttpGet]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        var users = await _userService.GetAllUsersAsync();
+        return Ok(users);
+    }
+
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)

@@ -41,7 +41,10 @@ else if (canView)
                 <tr>
                     <th>ID</th>
                     <th>Nome</th>
-                    <th>Ações</th>
+                    @if (canManage)
+                    {
+                        <th>Ações</th>
+                    }
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -52,15 +55,17 @@ else if (canView)
                     <tr>
                         <td>@role.Id</td>
                         <td>@role.Name</td>
-                        <td>
-                            @if (canManage)
-                            {
+                        @if (canManage)
+                        {
+                            <td>
+                            
                                 <a class="btn btn-sm btn-outline-primary"
                                    href="@($"/edit-role?roleId={role.Id}")">
                                     Editar permissões
                                 </a>
-                            }
+                            
                         </td>
+                        }
                         <td>
                             @if (role.IsActive == 1)
                             {
@@ -132,28 +137,31 @@ else if (canView)
 
     private async Task UpdateRoleStatusAsync(RoleDto role)
     {
-        try
+        @if (canManage)
         {
-            var token = await BrowserAuthStorage.GetTokenAsync();
-            if (string.IsNullOrWhiteSpace(token))
+            try
             {
-                error = "Sessão expirada. Faz login novamente.";
-                return;
+                var token = await BrowserAuthStorage.GetTokenAsync();
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    error = "Sessão expirada. Faz login novamente.";
+                    return;
+                }
+                if (role.IsActive == 1)
+                {
+                    await RoleApiService.UpdateStateRoleAsync(role.Id, 0, token);
+                    role.IsActive = 0;
+                }
+                else
+                {
+                    await RoleApiService.UpdateStateRoleAsync(role.Id, 1, token);
+                    role.IsActive = 1;
+                }
             }
-            if (role.IsActive == 1)
+            catch (HttpRequestException ex)
             {
-                await RoleApiService.UpdateStateRoleAsync(role.Id, 0, token);
-                role.IsActive = 0;
+                error = $"Erro ao atualizar o estado da Role: {ex.Message}";
             }
-            else
-            {
-                await RoleApiService.UpdateStateRoleAsync(role.Id, 1, token);
-                role.IsActive = 1;
-            }
-        }
-        catch (HttpRequestException ex)
-        {
-            error = $"Erro ao atualizar o estado da Role: {ex.Message}";
         }
     }
 }
