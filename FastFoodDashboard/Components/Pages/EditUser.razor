@@ -1,0 +1,264 @@
+﻿@using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
+
+@inject RoleApiService RoleApiService
+@inject PermissionApiService PermissionApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+@inject AuthApiService AuthApiService
+
+@page "/edit-user"
+
+<PageTitle>Editar Utilizador</PageTitle>
+
+<div class="container py-4" style="max-width: 850px;">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between
+        align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">Editar utilizador</h2>
+
+            <p class="text-muted mb-0">
+                Gerir as informações e o acesso do funcionário.
+            </p>
+        </div>
+
+        <a href="/admin/users"
+           class="btn btn-outline-secondary">
+            Voltar
+        </a>
+    </div>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    @if (success is not null)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+
+    <!-- Informações do utilizador -->
+    <div class="card shadow-sm rounded-3 mb-4">
+
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0">Informações do utilizador</h5>
+        </div>
+
+        <div class="card-body p-4">
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Username
+                </label>
+
+                <input class="form-control"
+                       value="@username"
+                       disabled />
+
+                <div class="form-text">
+                    Identificador do utilizador no sistema.
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Role atribuída
+                </label>
+
+                <select class="form-select"
+                        @bind="selectedRoleId">
+
+                    <option value="0">Selecionar Role</option>
+
+                    @foreach (var role in roles)
+                    {
+                        <option value="@role.Id">
+                            @role.Name
+                        </option>
+                    }
+                </select>
+
+                <div class="form-text">
+                    As permissões dependem da Role atribuída.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Estado da conta -->
+    <div class="card shadow-sm rounded-3 mb-4">
+
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0">Estado da conta</h5>
+        </div>
+
+        <div class="card-body p-4">
+
+            <div class="form-check form-switch">
+
+                <input class="form-check-input"
+                       type="checkbox"
+                       role="switch"
+                       id="accountStatus"
+                       @bind="isActive" />
+
+                <label class="form-check-label fw-semibold"
+                       for="accountStatus">
+                    Conta ativa
+                </label>
+
+            </div>
+
+            <p class="text-muted small mt-2 mb-0">
+                Controla se o funcionário pode utilizar
+                a aplicação.
+            </p>
+
+            @if (!isActive)
+            {
+                <div class="alert alert-warning mt-3 mb-0">
+                    Atenção: ao desativar a conta,
+                    este utilizador deixará de poder
+                    autenticar-se.
+                </div>
+            }
+
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="d-flex justify-content-end gap-2">
+
+        <a href="/admin/users"
+           class="btn btn-outline-secondary">
+            Cancelar
+        </a>
+
+        <button class="btn btn-primary"
+                @onclick=""
+                disabled="@(saving || selectedRoleId <= 0)">
+
+            @(saving ? "A guardar..." : "Guardar alterações")
+        </button>
+
+    </div>
+</div>
+
+
+@code{
+    [SupplyParameterFromQuery(Name = "userId")]
+    public int UserId { get; set; }
+
+    private string username = string.Empty;
+    private int selectedRoleId;
+    private bool isActive = true;
+    private bool saving;
+    private bool canEdit;
+
+    private string? error;
+    private string? success;
+
+    private List<RoleDto> roles = new();
+    private IReadOnlyList<UserResponse> users = new List<UserResponse>();
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            await LoadRolesAsync();
+
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar os dados: {ex.Message}";
+        }
+        finally
+        {
+            // loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            users = await AuthApiService.GetAllUsersAsync(token);
+
+            if(users == null)
+            {
+                error = "Não foi possivel obter utilizadores.";
+                return;
+            }
+
+            var myPermissions =
+                await PermissionApiService.GetMyPermissionsAsync(token);
+
+            canEdit =
+                myPermissions.Contains("users.manage") &&
+                myPermissions.Contains("users.view");
+
+            if (!canEdit)
+            {
+                error = "Não tens permissão para gerir Utilizadores.";
+                return;
+            }
+
+            roles = await RoleApiService.GetRolesAsync(token);
+
+            if (roles == null)
+            {
+                error = "Não foi possivel obter roles.";
+                return;
+            }
+
+            if (users.Any(u => u.Id == UserId)){
+                var user = users.First(u => u.Id == UserId);
+                username = user.Username;     
+
+                if (user != null && roles.Any(r => r.Id == user.Id))
+                {
+                    selectedRoleId = roles.First(r => r.Id == user.RoleId).Id;
+
+                }
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar os dados: {ex.Message}";
+        }
+        finally
+        {
+            //loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SaveUserChangesAsync()
+    {
+        
+    }
+}
