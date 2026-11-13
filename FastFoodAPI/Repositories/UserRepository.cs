@@ -2,6 +2,7 @@
 using FastFoodAPI.Data;
 using FastFoodAPI.Models;
 using FastFoodAPI.DTOs;
+using System.Text;
 
 namespace FastFoodAPI.Repositories
 {
@@ -77,7 +78,7 @@ namespace FastFoodAPI.Repositories
 
             var normalizedUsername =
                 username.Trim().ToUpperInvariant();
-            Console.WriteLine($"Normalized Username: {normalizedUsername}");
+            
             return await connection.QuerySingleOrDefaultAsync<User>(
                 new CommandDefinition(
                     sql,
@@ -111,6 +112,46 @@ namespace FastFoodAPI.Repositories
             return users.AsList();
         }
 
+        public async Task<bool> UpdateUserDetailsAsync(
+            UpdateUserDetailsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var fields = new List<string>();
+            var parameters = new DynamicParameters();
 
+            parameters.Add("Id", request.UserId);
+
+            if (request.RoleId != null)
+            {
+                fields.Add("RoleId = @RoleId");
+                parameters.Add("RoleId", request.RoleId);
+            }
+
+            if (request.IsAvailable != null)
+            {
+                fields.Add("IsActive = @IsAvailable");
+                parameters.Add("IsAvailable", request.IsAvailable);
+            }
+
+            if (fields.Count == 0)
+                return false;
+
+            var sql = $"""
+                UPDATE dbo.Users
+                SET {string.Join(", ", fields)}
+                WHERE Id = @Id;
+                """;
+
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            var affectedRows = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    parameters,
+                    cancellationToken: cancellationToken));
+
+            return affectedRows > 0;
+        }
     }
 }

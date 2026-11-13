@@ -158,4 +158,23 @@ public class UserController : ControllerBase
             //Role = user.Role
         });
     }
+
+    [Authorize(Policy = "CanManageUsers")]
+    [HttpPut("update")]
+    public async Task<IActionResult> UpdateUser(
+        [FromBody] UpdateUserDetailsRequest request)
+    {
+        var success = await _userService.UpdateUserDetailsAsync(request);
+        if (!success)
+        {
+            return BadRequest(new
+            {
+                Message = "Não foi possível atualizar o usuário."
+            });
+        }
+        return Ok(new
+        {
+            Message = "Usuário atualizado com sucesso."
+        });
+    }
 }

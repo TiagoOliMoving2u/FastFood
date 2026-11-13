@@ -84,11 +84,24 @@ namespace FastFoodAPI.Services
                 user,
                 user.PasswordHash,
                 password);
-            Console.WriteLine($"Password verification result: {result}");
             if (result == PasswordVerificationResult.Failed)
                 return null;
 
             return user;
+        }
+
+        public async Task<bool> UpdateUserDetailsAsync(
+            UpdateUserDetailsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (request.UserId <= 0)
+            {
+                throw new ArgumentException("Invalid UserId.");
+            }
+
+            return await _userRepository.UpdateUserDetailsAsync(
+                request,
+                cancellationToken);
         }
     }
 }

@@ -64,6 +64,10 @@ else if (canView)
                                    href="@($"/edit-user?userId={user.Id}")">
                                     Editar
                                 </a>
+                                <a class="btn btn-sm btn-outline-primary"
+                                   href="@($"/edit-user?userId={user.Id}")">
+                                    Alterar Password
+                                </a>
                         </td>
                         }
                         <td>
@@ -84,7 +88,7 @@ else if (canView)
 }
 
 @code {
-    private IReadOnlyList<UserResponse> users = new List<UserResponse>();
+    private IReadOnlyList<UserResponse>? users = new List<UserResponse>();
 
     private bool loading = true;
     private bool canView;
@@ -149,12 +153,20 @@ else if (canView)
                 }
                 if (user.IsActive == 1)
                 {
-                    //await AuthApiService.UpdateStateUserAsync(user.Id, 0, token);
+                    await AuthApiService.UpdateUserDetailsAsync(token, new UpdateUserDetailsRequest
+                    {
+                        UserId = user.Id,
+                        IsAvailable = 0
+                    });
                     user.IsActive = 0;
                 }
                 else
                 {
-                    //await AuthApiService.UpdateStateUserAsync(user.Id, 1, token);
+                    await AuthApiService.UpdateUserDetailsAsync(token, new UpdateUserDetailsRequest
+                    {
+                        UserId = user.Id,
+                        IsAvailable = 1
+                    });
                     user.IsActive = 1;
                 }
             }

@@ -101,5 +101,28 @@ namespace FastFoodDashboard.Services
             response.EnsureSuccessStatusCode();
             return true;
         }
+
+        public async Task<HttpStatusCode> UpdateUserDetailsAsync(
+            string token,
+            UpdateUserDetailsRequest updateUserDetailsRequest,
+            CancellationToken cancellationToken = default)
+        {
+            var client = _httpClientFactory.CreateClient("FastFoodApi");
+            using var request = new HttpRequestMessage(
+                HttpMethod.Put,
+                "api/user/update");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(updateUserDetailsRequest);
+            var response = await client.SendAsync(
+                request, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return response.StatusCode;
+            }
+            response.EnsureSuccessStatusCode();
+            return response.StatusCode;
+        }
     }
 }

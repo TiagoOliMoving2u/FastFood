@@ -1,5 +1,6 @@
 ﻿@using FastFoodDashboard.Models
 @using FastFoodDashboard.Services
+@using System.Net
 
 @inject RoleApiService RoleApiService
 @inject PermissionApiService PermissionApiService
@@ -23,11 +24,6 @@
                 Gerir as informações e o acesso do funcionário.
             </p>
         </div>
-
-        <a href="/admin/users"
-           class="btn btn-outline-secondary">
-            Voltar
-        </a>
     </div>
 
     @if (error is not null)
@@ -135,11 +131,11 @@
 
         <a href="/admin/users"
            class="btn btn-outline-secondary">
-            Cancelar
+            Voltar
         </a>
 
         <button class="btn btn-primary"
-                @onclick=""
+                @onclick="SaveUserChangesAsync"
                 disabled="@(saving || selectedRoleId <= 0)">
 
             @(saving ? "A guardar..." : "Guardar alterações")
@@ -156,7 +152,7 @@
     private string username = string.Empty;
     private int selectedRoleId;
     private bool isActive = true;
-    private bool saving;
+    private bool saving = false;
     private bool canEdit;
 
     private string? error;
@@ -237,9 +233,10 @@
 
             if (users.Any(u => u.Id == UserId)){
                 var user = users.First(u => u.Id == UserId);
-                username = user.Username;     
+                username = user.Username;
+                isActive = user.IsActive == 1;
 
-                if (user != null && roles.Any(r => r.Id == user.Id))
+                if (user != null && roles.Any(r => r.Id == user.RoleId))
                 {
                     selectedRoleId = roles.First(r => r.Id == user.RoleId).Id;
 
@@ -259,6 +256,71 @@
 
     private async Task SaveUserChangesAsync()
     {
-        
+        if (saving || selectedRoleId <= 0)
+            return;
+
+        error = null;
+        success = null;
+        saving = true;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada.";
+                return;
+            }
+            UpdateUserDetailsRequest request = new UpdateUserDetailsRequest
+            {
+                UserId = UserId,
+                RoleId = selectedRoleId,
+                IsAvailable = isActive ? 1 : 0
+            };
+            var status =
+                await AuthApiService.UpdateUserDetailsAsync(
+                    token,
+                    new UpdateUserDetailsRequest
+                    {
+                        UserId = UserId,
+                        RoleId = selectedRoleId,
+                        IsAvailable = isActive ? 1 : 0
+                    }
+                    );
+            if (status == HttpStatusCode.OK ||
+                status == HttpStatusCode.NoContent)
+            {
+                success = "Informações do Utilizador atualizadas com sucesso!";
+                roles = await RoleApiService.GetRolesAsync(token);
+            }
+            else if (status == HttpStatusCode.BadRequest)
+            {
+                error = "Verifica os dados introduzidos.";
+            }
+            else if (status == HttpStatusCode.NotFound)
+            {
+                error = "Role não encontrada.";
+            }
+            else if (status == HttpStatusCode.Forbidden)
+            {
+                error = "Não tens permissão para editar esta Role.";
+            }
+            else if (status == HttpStatusCode.Unauthorized)
+            {
+                error = "Sessão inválida ou expirada.";
+            }
+            else
+            {
+                error = $"Erro ao guardar: HTTP {(int)status}";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro de comunicação: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
     }
 }
