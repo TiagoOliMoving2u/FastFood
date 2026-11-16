@@ -65,7 +65,7 @@ else if (canView)
                                     Editar
                                 </a>
                                 <a class="btn btn-sm btn-outline-primary"
-                                   href="@($"/edit-user?userId={user.Id}")">
+                                   href="@($"/edit-pass?userId={user.Id}")">
                                     Alterar Password
                                 </a>
                         </td>
@@ -173,6 +173,27 @@ else if (canView)
             catch (HttpRequestException ex)
             {
                 error = $"Erro ao atualizar o estado da Role: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task EditPasswordAsync()
+    {
+        @if (canManage)
+        {
+            try
+            {
+                var token = await BrowserAuthStorage.GetTokenAsync();
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    error = "Sessão expirada. Faz login novamente.";
+                    return;
+                }
+                
+            }
+            catch (HttpRequestException ex)
+            {
+                error = $"Erro ao editar a password: {ex.Message}";
             }
         }
     }

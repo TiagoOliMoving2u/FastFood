@@ -89,6 +89,40 @@ namespace FastFoodAPI.Repositories
                     cancellationToken: cancellationToken));
         }
 
+        public async Task<User?> GetByIdAsync(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+            const string sql = """
+            SELECT
+                u.Id,
+                u.Username,
+                u.PasswordHash,
+                u.RoleId,
+                u.IsActive,
+                r.Name AS Role
+            FROM dbo.Users u
+            INNER JOIN dbo.Roles r
+                ON u.RoleId = r.Id
+            WHERE u.Id = @Id
+                AND u.IsActive = 1
+                AND r.IsActive = 1;
+            """;
+
+            return await connection.QuerySingleOrDefaultAsync<User>(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        Id = id
+                    },
+                    cancellationToken: cancellationToken));
+        }
+
         public async Task<IReadOnlyList<UserResponse>> GetAllAsync(
             CancellationToken cancellationToken = default)
         {
@@ -151,6 +185,25 @@ namespace FastFoodAPI.Repositories
                     parameters,
                     cancellationToken: cancellationToken));
 
+            return affectedRows > 0;
+        }
+
+        public async Task<bool> UpdateUserPasswordAsync(
+            User user,
+            CancellationToken cancellationToken = default)
+        {
+            const string sql = """
+                UPDATE dbo.Users
+                SET PasswordHash = @PasswordHash
+                WHERE Id = @UserId;
+                """;
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            var affectedRows = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new { UserId = user.Id, PasswordHash = user.PasswordHash },
+                    cancellationToken: cancellationToken));
             return affectedRows > 0;
         }
     }

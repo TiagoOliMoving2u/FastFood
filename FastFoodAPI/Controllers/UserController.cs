@@ -177,4 +177,24 @@ public class UserController : ControllerBase
             Message = "Usuário atualizado com sucesso."
         });
     }
+
+    [Authorize(Policy = "CanManageUsers")]
+    [HttpPut("{id}/update-password")]
+    public async Task<IActionResult> UpdateUserPassword(
+        [FromRoute] int id,
+        [FromBody] UpdateUserPasswordRequest request)
+    {
+        var success = await _userService.UpdateUserPasswordAsync(id, request);
+        if (!success)
+        {
+            return BadRequest(new
+            {
+                Message = "Não foi possível atualizar a senha do usuário."
+            });
+        }
+        return Ok(new
+        {
+            Message = "Senha do usuário atualizada com sucesso."
+        });
+    }
 }

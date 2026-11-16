@@ -124,5 +124,29 @@ namespace FastFoodDashboard.Services
             response.EnsureSuccessStatusCode();
             return response.StatusCode;
         }
+
+        public async Task<HttpStatusCode> UpdateUserPasswordAsync(
+            int userId,
+            string newPassword,
+            string token,
+            CancellationToken cancellationToken = default)
+        {
+            var client = _httpClientFactory.CreateClient("FastFoodApi");
+            using var request = new HttpRequestMessage(
+                HttpMethod.Put,
+                $"api/user/{userId}/update-password");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(new { NewPassword = newPassword });
+            var response = await client.SendAsync(
+                request, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return response.StatusCode;
+            }
+            response.EnsureSuccessStatusCode();
+            return response.StatusCode;
+        }
     }
 }

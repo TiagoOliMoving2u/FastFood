@@ -89,7 +89,6 @@ namespace FastFoodAPI.Services
 
             return user;
         }
-
         public async Task<bool> UpdateUserDetailsAsync(
             UpdateUserDetailsRequest request,
             CancellationToken cancellationToken = default)
@@ -101,6 +100,37 @@ namespace FastFoodAPI.Services
 
             return await _userRepository.UpdateUserDetailsAsync(
                 request,
+                cancellationToken);
+        }
+
+        public async Task<bool> UpdateUserPasswordAsync(
+            int userId,
+            UpdateUserPasswordRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (userId <= 0)
+            {
+                throw new ArgumentException("Invalid UserId.");
+            }
+            if (string.IsNullOrWhiteSpace(request.NewPassword) ||
+                request.NewPassword.Length < 12)
+            {
+                throw new ArgumentException(
+                    "A nova password deve ter pelo menos 12 caracteres.");
+            }
+            var user = await _userRepository.GetByIdAsync(
+                userId,
+                cancellationToken);
+            if (user is null)
+            {
+                return false;
+            }
+            // Criar o hash da nova password
+            user.PasswordHash = _passwordHasher.HashPassword(
+                user,
+                request.NewPassword);
+            return await _userRepository.UpdateUserPasswordAsync(
+                user,
                 cancellationToken);
         }
     }
