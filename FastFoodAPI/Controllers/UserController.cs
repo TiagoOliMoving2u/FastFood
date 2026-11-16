@@ -89,7 +89,9 @@ public class UserController : ControllerBase
 
             new Claim(
                 JwtRegisteredClaimNames.Jti,
-                Guid.NewGuid().ToString())
+                Guid.NewGuid().ToString()),
+
+            new Claim("token_version", user.TokenVersion.ToString())
         };
 
         // Assinar o JWT
@@ -113,7 +115,8 @@ public class UserController : ControllerBase
             TokenType = "Bearer",
             ExpiresAtUtc = expires,
             Role = user.Role,
-            Username = user.Username
+            Username = user.Username,
+            TokenVersion = user.TokenVersion
         });
     }
 

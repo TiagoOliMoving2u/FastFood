@@ -98,6 +98,39 @@ builder.Services
 
                 ClockSkew = TimeSpan.FromSeconds(30)
             };
+
+        options.Events.OnTokenValidated = async context =>
+            {
+                var user = context.Principal;
+
+                var userIdClaim =
+                    user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? user?.FindFirst("sub")?.Value;
+
+                var versionClaim =
+                    user?.FindFirst("token_version")?.Value;
+
+                if (!int.TryParse(userIdClaim, out int userId) ||
+                    !int.TryParse(versionClaim, out int tokenVersion) ||
+                    userId <= 0)
+                {
+                    context.Fail("Token inválido.");
+                    return;
+                }
+
+                var repository = context.HttpContext.RequestServices
+                    .GetRequiredService<UserRepository>();
+
+                var valid = await repository.IsTokenValidAsync(
+                    userId,
+                    tokenVersion,
+                    context.HttpContext.RequestAborted);
+
+                if (!valid)
+                {
+                    context.Fail("Sessão inválida ou revogada.");
+                }
+            };
     });
 
 // Autorização
@@ -155,6 +188,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapHub<OrdersHub>("/hubs/orders");
+//app.MapHub<OrdersHub>("/hubs/orders");
+
+app.MapHub<OrdersHub>("/hubs/orders", options =>
+{
+    options.CloseOnAuthenticationExpiration = true;
+});
 
 app.Run();

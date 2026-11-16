@@ -52,6 +52,41 @@ namespace FastFoodAPI.Repositories
                     cancellationToken: cancellationToken));
         }
 
+        public async Task<bool> IsTokenValidAsync(
+            int userId,
+            int tokenVersion,
+            CancellationToken cancellationToken = default)
+        {
+            await using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string sql = """
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM dbo.Users u
+                    INNER JOIN dbo.Roles r
+                        ON r.Id = u.RoleId
+                    WHERE u.Id = @UserId
+                      AND u.IsActive = 1
+                      AND r.IsActive = 1
+                      AND u.TokenVersion = @TokenVersion
+                )
+                THEN 1 ELSE 0 END;
+                """;
+
+            var result = await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        UserId = userId,
+                        TokenVersion = tokenVersion
+                    },
+                    cancellationToken: cancellationToken));
+
+            return result == 1;
+        }
+
         public async Task<User?> GetByUsernameAsync(
             string username,
             CancellationToken cancellationToken = default)
@@ -67,6 +102,7 @@ namespace FastFoodAPI.Repositories
                 u.PasswordHash,
                 u.RoleId,
                 u.IsActive,
+                u.TokenVersion,
                 r.Name AS Role
             FROM dbo.Users u
             INNER JOIN dbo.Roles r
@@ -104,6 +140,7 @@ namespace FastFoodAPI.Repositories
                 u.PasswordHash,
                 u.RoleId,
                 u.IsActive,
+                u.TokenVersion,
                 r.Name AS Role
             FROM dbo.Users u
             INNER JOIN dbo.Roles r
@@ -167,6 +204,9 @@ namespace FastFoodAPI.Repositories
                 parameters.Add("IsAvailable", request.IsAvailable);
             }
 
+            fields.Add("TokenVersion = TokenVersion + 1"); 
+            
+
             if (fields.Count == 0)
                 return false;
 
@@ -194,7 +234,8 @@ namespace FastFoodAPI.Repositories
         {
             const string sql = """
                 UPDATE dbo.Users
-                SET PasswordHash = @PasswordHash
+                SET PasswordHash = @PasswordHash,
+                TokenVersion = TokenVersion + 1
                 WHERE Id = @UserId;
                 """;
             await using var connection = _factory.CreateConnection();
