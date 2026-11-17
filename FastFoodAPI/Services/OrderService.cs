@@ -149,6 +149,7 @@ namespace FastFoodAPI.Services
         public async Task<OrderResponse> UpdateOrderAsync(
             int id,
             int operation,
+            int currentState,
             ClaimsPrincipal user,
             CancellationToken cancellationToken)
         {
@@ -159,6 +160,9 @@ namespace FastFoodAPI.Services
             if (operation is not (1 or -1))
                 throw new ArgumentException(
                     "State can only increment or decrement by 1.");
+
+            if (currentState is < 1 or > 4)
+                throw new ArgumentException("Invalid current state.");
 
             // 2. Identificar o funcionário autenticado
             if (user.Identity?.IsAuthenticated != true)
@@ -179,6 +183,9 @@ namespace FastFoodAPI.Services
 
             if (order is null)
                 throw new ArgumentException("Order not found.");
+
+            if ((int)order.State != currentState)
+                throw new OrderConflictException();
 
             // 4. Calcular e validar o próximo estado
             var nextState =

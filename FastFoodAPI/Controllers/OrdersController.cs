@@ -110,13 +110,14 @@ namespace FastFoodAPI.Controllers
 
         [Authorize]
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromQuery] int operation,CancellationToken cancellationToken)
+        public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromQuery] int operation, [FromQuery] int currentState, CancellationToken cancellationToken)
         {
             try
             {
                 var updatedOrder = await _orderService.UpdateOrderAsync(
                     id,
                     operation,
+                    currentState,
                     User,
                     cancellationToken);
 

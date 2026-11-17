@@ -107,7 +107,7 @@ else{
                                     @if (CanChangeOrderState(order, -1))
                                     {
                                         <button class="btn btn-secondary"
-                                                @onclick="() => NextState(order.Id, -1)">
+                                                @onclick="() => NextState(order.Id, -1, (int)order.State)">
                                             Voltar
                                         </button>
                                     }
@@ -115,7 +115,7 @@ else{
                                     @if (CanChangeOrderState(order, 1))
                                     {
                                         <button class="btn btn-primary"
-                                                @onclick="() => NextState(order.Id, 1)">
+                                                @onclick="() => NextState(order.Id, 1, (int)order.State)">
                                             Avançar
                                         </button>
                                     }
@@ -299,7 +299,7 @@ else{
         (4, "Entregue")
     };
 
-    private async Task NextState(int id, int operation)
+    private async Task NextState(int id, int operation, int currentState)
     {
         error = null;
         try
@@ -323,7 +323,7 @@ else{
                 .CreateClient("FastFoodApi");
 
             // Mantém o formato que já funciona no teu endpoint
-            string endpoint = $"api/orders/{id}?operation={operation}";
+            string endpoint = $"api/orders/{id}?operation={operation}&currentState={currentState}";
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Put,
