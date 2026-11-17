@@ -83,7 +83,7 @@ else if (rolesLoaded)
                 return;
             }
 
-            roles = await RoleApiService.GetRolesAsync(token) ?? new();
+            roles = await RoleApiService.GetRolesAsync(token,false) ?? new();
 
             rolesLoaded = true;
 
@@ -166,14 +166,21 @@ else if (rolesLoaded)
                 return;
             }
             
+            var selectedProfile = roles?.FirstOrDefault(
+                r => r.Id == selectedRole && r.IsActive == 1);
+
+            if (selectedProfile is null)
+            {
+                error = "Seleciona um perfil ativo válido.";
+                return;
+            }
+
             var createUserRequest = new CreateUserRequest
             {
                 Username = username!,
                 Password = password!,
-                Role = roles!.FirstOrDefault(r => r.Id == selectedRole)!.Name
+                Role = selectedProfile.Name
             };
-
-            Console.WriteLine(roles!.FirstOrDefault(r => r.Id == selectedRole)!.Name);
 
             var created = await AuthApiService.CreateUserAsync(
                 token,

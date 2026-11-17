@@ -17,13 +17,14 @@ public class RoleApiService
 
     public async Task<List<RoleDto>?> GetRolesAsync(
             string token,
+            bool inactiveToo = true,
             CancellationToken cancellationToken = default)
     {
         var client = _httpClientFactory.CreateClient("FastFoodApi");
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            "api/roles?inactiveToo=true");
+            $"api/roles?inactiveToo={inactiveToo}");
 
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
