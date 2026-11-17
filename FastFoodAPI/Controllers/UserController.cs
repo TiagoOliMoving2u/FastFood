@@ -132,7 +132,7 @@ public class UserController : ControllerBase
     }
 
 
-    [Authorize(Policy = "CanCreateUsers")]
+    [Authorize(Policy = "CanManageUsers")]
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser(
         [FromBody] CreateUserRequest request)

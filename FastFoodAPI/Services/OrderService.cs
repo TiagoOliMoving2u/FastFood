@@ -141,10 +141,10 @@ namespace FastFoodAPI.Services
         //PUTs (atualziar)
 
         public async Task<OrderResponse> UpdateOrderAsync(
-    int id,
-    int operation,
-    ClaimsPrincipal user,
-    CancellationToken cancellationToken)
+            int id,
+            int operation,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken)
         {
             // 1. Validar os parâmetros
             if (id <= 0)
