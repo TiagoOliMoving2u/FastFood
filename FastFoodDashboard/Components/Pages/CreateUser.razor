@@ -50,7 +50,10 @@ else if (rolesLoaded)
     }
 </select>
 <br />
-<button @onclick="@CreateUserAsync">Create User</button>
+    <button @onclick="CreateUserAsync"
+            disabled="@(loading || submitting)">
+        @(submitting ? "A criar..." : "Criar utilizador")
+    </button>
 }
 @code {
     private string? error;
@@ -61,6 +64,7 @@ else if (rolesLoaded)
     private string? confirmPassword;
     private bool loading = true;
     private bool rolesLoaded = false;
+    private bool submitting;
 
     private int selectedRole = 0;
     private List<RoleDto>? roles = new();
@@ -153,12 +157,20 @@ else if (rolesLoaded)
 
     private async Task CreateUserAsync()
     {
-        error = null;
-        success = null;
-        if (!await ValidateInputs() || !await ConfirmPassowrd())
+        if (submitting)
             return;
+
+        submitting = true;
+
+        
         try
         {
+            error = null;
+            success = null;
+
+            if (!await ValidateInputs() || !await ConfirmPassowrd())
+                return;
+
             var token = await BrowserAuthStorage.GetTokenAsync();
             if (string.IsNullOrWhiteSpace(token))
             {
@@ -201,6 +213,10 @@ else if (rolesLoaded)
 
             error = "Não foi possível criar o utilizador. " +
                     "Verifica os dados e tenta novamente.";
+        }
+        finally
+        {
+            submitting = false;
         }
     }
 }
