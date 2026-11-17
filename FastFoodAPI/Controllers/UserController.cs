@@ -187,17 +187,23 @@ public class UserController : ControllerBase
         [FromRoute] int id,
         [FromBody] UpdateUserPasswordRequest request)
     {
-        var success = await _userService.UpdateUserPasswordAsync(id, request);
-        if (!success)
-        {
-            return BadRequest(new
+        try {
+            var success = await _userService.UpdateUserPasswordAsync(id, request);
+            if (!success)
             {
-                Message = "Não foi possível atualizar a senha do usuário."
+                return BadRequest(new
+                {
+                    Message = "Não foi possível atualizar a senha do usuário."
+                });
+            }
+            return Ok(new
+            {
+                Message = "Senha do usuário atualizada com sucesso."
             });
         }
-        return Ok(new
+        catch (ArgumentException ex)
         {
-            Message = "Senha do usuário atualizada com sucesso."
-        });
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }
