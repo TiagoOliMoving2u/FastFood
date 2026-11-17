@@ -207,12 +207,24 @@ namespace FastFoodAPI.Repositories
             if (fields.Count == 0)
                 return false;
 
-            fields.Add("TokenVersion = TokenVersion + 1");      
+            fields.Add("TokenVersion = TokenVersion + 1");
+
+            var roleCondition = request.RoleId.HasValue
+                ? """
+                  AND EXISTS (
+                      SELECT 1
+                      FROM dbo.Roles r
+                      WHERE r.Id = @RoleId
+                        AND r.IsActive = 1
+                  )
+                  """
+                : string.Empty;
 
             var sql = $"""
                 UPDATE dbo.Users
                 SET {string.Join(", ", fields)}
-                WHERE Id = @Id;
+                WHERE Id = @Id
+                {roleCondition};
                 """;
 
             await using var connection = _factory.CreateConnection();
