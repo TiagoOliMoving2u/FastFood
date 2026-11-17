@@ -31,6 +31,14 @@ namespace FastFoodAPI.Repositories
                 """;
 
             var orders = await connection.QueryAsync<OrderResponse>(new CommandDefinition(query, cancellationToken: cancellationToken));
+
+            foreach (var order in orders)
+            {
+                order.CreatedOn = DateTime.SpecifyKind(
+                    order.CreatedOn,
+                    DateTimeKind.Utc);
+            }
+
             return orders.AsList();
         }
 
@@ -154,6 +162,10 @@ namespace FastFoodAPI.Repositories
 
             foreach (var order in orders)
             {
+                order.CreatedOn = DateTime.SpecifyKind(
+                    order.CreatedOn,
+                    DateTimeKind.Utc);
+
                 order.Items = itemsByOrder[order.Id].ToList();
             }
 

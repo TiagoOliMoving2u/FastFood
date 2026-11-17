@@ -143,23 +143,28 @@ public class UserController : ControllerBase
         {
             return NotFound();
         }
-        var user = await _userService.CreateUserAsync(
+        try {
+            var user = await _userService.CreateUserAsync(
             request.Username,
             request.Password,
             request.Role);
-        if (user is null)
-        {
-            return BadRequest(new
+            if (user is null)
             {
-                Message = "Não foi possível criar o usuário."
+                return BadRequest(new
+                {
+                    Message = "Não foi possível criar o Utilizador."
+                });
+            }
+            return Ok(new
+            {
+                Message = "Utilizador criado com sucesso.",
             });
         }
-        return Ok(new
+        catch (ArgumentException ex)
         {
-            Message = "Usuário criado com sucesso.",
-            //Username = user.Username,
-            //Role = user.Role
-        });
+            return BadRequest(new { message = ex.Message });
+        }
+
     }
 
     [Authorize(Policy = "CanManageUsers")]

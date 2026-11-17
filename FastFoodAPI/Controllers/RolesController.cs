@@ -23,14 +23,8 @@ namespace FastFoodAPI.Controllers
             CancellationToken cancellationToken = default)
         {
             var roles = await _roleService.GetRolesAsync(inactiveToo, cancellationToken);
-            if (roles is null || !roles.Any())
-            {
-                return NotFound(new
-                {
-                    Message = "Nenhuma role encontrada."
-                });
-            }
-            return Ok(roles);
+
+            return Ok(roles ?? new List<FastFoodAPI.Models.Role>()); ;
         }
 
         [HttpGet("{id:int}/permissions")]

@@ -4,7 +4,7 @@ namespace FastFoodAPI.DTOs
 {
     public class StateHistoryResponse
     {
-        int Id { get; set; }
+        public int Id { get; set; }
         public int OrderId { get; set; }
         public string OrderCode { get; set; } = string.Empty;
         public int AreaId { get; set; }
