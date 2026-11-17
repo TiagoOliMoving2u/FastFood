@@ -41,10 +41,10 @@ namespace FastFoodAPI.Services
             return orders;
         }
 
-        public async Task<ActionResult<OrderResponse?>> GetOrderByIdAsync(int id, CancellationToken cancellationToken)
+        public async Task<OrderResponse?> GetOrderByIdAsync(int id, CancellationToken cancellationToken)
         {   
             if(id <= 0)
-                return new BadRequestObjectResult("Invalid order ID.");
+                throw new ArgumentException("Invalid order ID.");
 
             var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
             return order;

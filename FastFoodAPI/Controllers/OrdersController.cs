@@ -44,8 +44,12 @@ namespace FastFoodAPI.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<OrderResponse>> GetOrderById(int id, CancellationToken cancellationToken)
         {
-            try { 
+            try {
                 var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
+
+                if (order is null)
+                    return NotFound();
+
                 return Ok(order);
             }
             catch (Exception ex)
