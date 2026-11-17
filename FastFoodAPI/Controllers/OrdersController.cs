@@ -164,9 +164,20 @@ namespace FastFoodAPI.Controllers
             {
                 return Conflict(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Erro inesperado ao atualizar o pedido {OrderId}.",
+                    id);
+
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Não foi possível atualizar o pedido.");
             }
         }
 

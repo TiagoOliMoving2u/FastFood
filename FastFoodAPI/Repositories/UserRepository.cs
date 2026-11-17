@@ -204,11 +204,10 @@ namespace FastFoodAPI.Repositories
                 parameters.Add("IsAvailable", request.IsAvailable);
             }
 
-            fields.Add("TokenVersion = TokenVersion + 1"); 
-            
-
             if (fields.Count == 0)
                 return false;
+
+            fields.Add("TokenVersion = TokenVersion + 1");      
 
             var sql = $"""
                 UPDATE dbo.Users
