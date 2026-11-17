@@ -37,9 +37,17 @@ namespace FastFoodAPI.Controllers
                 var orders = await _orderService.GetOrdersAsyn(areaId, state, cancellationToken);
                 return Ok(orders);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro inesperado ao processar pedidos.");
+
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Não foi possível concluir a operação.");
             }
         }
 
@@ -55,9 +63,17 @@ namespace FastFoodAPI.Controllers
 
                 return Ok(order);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro inesperado ao processar pedidos.");
+
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Não foi possível concluir a operação.");
             }
         }
 
@@ -75,9 +91,17 @@ namespace FastFoodAPI.Controllers
                 if (history == null) return NotFound();
                 return Ok(history);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro inesperado ao processar pedidos.");
+
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Não foi possível concluir a operação.");
             }
 
         }
@@ -99,10 +123,17 @@ namespace FastFoodAPI.Controllers
                     new { id = order.Id },
                     order);
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro inesperado ao processar pedidos.");
 
-                return BadRequest(new { message = ex.Message });
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Não foi possível concluir a operação.");
             }
         }
 
