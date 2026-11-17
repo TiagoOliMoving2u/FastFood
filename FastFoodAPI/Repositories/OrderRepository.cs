@@ -57,7 +57,30 @@ namespace FastFoodAPI.Repositories
 
             if (order is not null)
             {
-                order.CreatedOn = DateTime.SpecifyKind(order.CreatedOn, DateTimeKind.Utc);
+                order.CreatedOn = DateTime.SpecifyKind(
+                    order.CreatedOn, DateTimeKind.Utc);
+
+                const string sqlGetItems = """
+                    SELECT
+                        oi.Id,
+                        oi.OrderId,
+                        oi.MenuItemId,
+                        mi.Name,
+                        oi.Quantity,
+                        oi.UnitPrice
+                    FROM dbo.OrderItems oi
+                    INNER JOIN dbo.MenuItems mi ON mi.Id = oi.MenuItemId
+                    WHERE oi.OrderId = @OrderId
+                    ORDER BY oi.Id;
+                    """;
+
+                var items = await connection.QueryAsync<OrderItem>(
+                    new CommandDefinition(
+                        sqlGetItems,
+                        new { OrderId = orderId },
+                        cancellationToken: cancellationToken));
+
+                order.Items = items.AsList();
             }
 
             return order;
