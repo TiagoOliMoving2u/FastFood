@@ -174,7 +174,6 @@ public class RoleApiService
         {
             Content = JsonContent.Create(new
             {
-                Id = roleId,
                 IsActive = isActive
             })
         };

@@ -108,12 +108,14 @@ namespace FastFoodAPI.Controllers
         [Authorize(Policy = "CanManageRoles")]
         [HttpPut("{id:int}/state")]
         public async Task<IActionResult> UpdateRoleState(
+            [FromRoute] int id,
             [FromBody] UpdateRoleStateRequest request,
             CancellationToken cancellationToken)
         {
             try
             {
-                var updated = await _roleService.UpdateRoleStateAsync(                    
+                var updated = await _roleService.UpdateRoleStateAsync(
+                    id,
                     request,
                     cancellationToken);
                 if (!updated)

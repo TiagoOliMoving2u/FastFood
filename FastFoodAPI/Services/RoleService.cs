@@ -100,16 +100,18 @@ namespace FastFoodAPI.Services
         }
 
         public async Task<bool> UpdateRoleStateAsync(
+            int id,
             UpdateRoleStateRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (request.Id <= 0)
+            if (id <= 0)
                 throw new ArgumentException("Invalid RoleId.");
 
             if(request.IsActive != 0 && request.IsActive != 1)
                 throw new ArgumentException("Invalid IsActive value.");
 
             return await _roleRepository.UpdateRoleStateAsync(
+                id,
                 request,
                 cancellationToken);
         }

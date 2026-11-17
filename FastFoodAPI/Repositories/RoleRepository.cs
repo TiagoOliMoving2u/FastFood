@@ -307,6 +307,7 @@ namespace FastFoodAPI.Repositories
         }
 
         public async Task<bool> UpdateRoleStateAsync(
+            int id,
             UpdateRoleStateRequest request,
             CancellationToken cancellationToken = default)
         {
@@ -322,7 +323,7 @@ namespace FastFoodAPI.Repositories
                     sql,
                     new
                     {
-                        RoleId = request.Id,
+                        RoleId = id,
                         IsActive = request.IsActive
                     },
                     cancellationToken: cancellationToken));
