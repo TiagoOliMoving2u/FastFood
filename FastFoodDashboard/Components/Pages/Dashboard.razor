@@ -348,9 +348,8 @@ else{
 
             if (!response.IsSuccessStatusCode)
             {
-                error = $"Erro ao atualizar o pedido: " +
-                        $"{(int)response.StatusCode}";
-                await SessionExpiredAsync();
+                error = $"Não foi possível atualizar o pedido. " +
+                    $"Código HTTP: {(int)response.StatusCode}.";
 
                 return;
             }

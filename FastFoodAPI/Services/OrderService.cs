@@ -98,6 +98,12 @@ namespace FastFoodAPI.Services
             {
                 foreach (var otherItem in request.Items.Where(i => i != item && i.Id == item.Id && i.Quantity > 0))
                 {
+                    if (item.Quantity > int.MaxValue - otherItem.Quantity)
+                    {
+                        throw new ArgumentException(
+                            "A quantidade total do artigo é demasiado elevada.");
+                    }
+
                     item.Quantity += otherItem.Quantity;
                     otherItem.Quantity = 0; // Mark the duplicate item for removal
                 }
