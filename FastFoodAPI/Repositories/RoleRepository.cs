@@ -316,7 +316,7 @@ namespace FastFoodAPI.Repositories
             const string sql = """
                 UPDATE dbo.Roles
                 SET IsActive = @IsActive
-                WHERE Id = @RoleId AND IsActive != @IsActive;
+                WHERE Id = @RoleId;
                 """;
             var rowsAffected = await connection.ExecuteAsync(
                 new CommandDefinition(
