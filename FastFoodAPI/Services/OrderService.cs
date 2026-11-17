@@ -1,7 +1,7 @@
 ﻿using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
-using Microsoft.AspNetCore.Mvc;
+using FastFoodAPI.Exceptions;
 using System.Security.Claims;
 
 namespace FastFoodAPI.Services
@@ -210,8 +210,7 @@ namespace FastFoodAPI.Services
                 cancellationToken);
 
             if (updatedOrder is null)
-                throw new ArgumentException(
-                    "Failed to update order state.");
+                throw new OrderConflictException();
 
             return updatedOrder;
         }

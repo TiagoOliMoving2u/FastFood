@@ -1,6 +1,6 @@
 ﻿using FastFoodAPI.DTOs;
 using FastFoodAPI.Hubs;
-using FastFoodAPI.Models;
+using FastFoodAPI.Exceptions;
 using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +14,14 @@ namespace FastFoodAPI.Controllers
     {
         private readonly OrderService _orderService;
         private readonly IHubContext<OrdersHub> _hubContext;
+        private readonly ILogger<OrdersController> _logger;
         public OrdersController(OrderService orderService,
-            IHubContext<OrdersHub> hubContext)
+            IHubContext<OrdersHub> hubContext, 
+            ILogger<OrdersController> logger)
         {
             _orderService = orderService;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         //--- Get: api/orders
@@ -88,17 +91,9 @@ namespace FastFoodAPI.Controllers
             {
                 var order = await _orderService.CreateOrderAsync(request, cancellationToken);
 
-                if (_hubContext == null)
-                {
-                    return Conflict("Order state could not be created.");
-                }
-                    await _hubContext.Clients.All.SendAsync(
-                        "OrdersChanged",
-                        cancellationToken);
+                await NotifyAsync("OrdersChanged");
 
-                    await _hubContext.Clients.All.SendAsync(
-                        "CreatedNewOrder",
-                        cancellationToken);
+                await NotifyAsync("CreatedNewOrder");
 
                 return CreatedAtAction(nameof(GetOrderById),
                     new { id = order.Id },
@@ -125,15 +120,7 @@ namespace FastFoodAPI.Controllers
                     User,
                     cancellationToken);
 
-                if (updatedOrder is null)
-                {
-                    return Conflict("Order state could not be updated.");
-                }
-
-                await _hubContext.Clients.All.SendAsync(
-                        "OrdersChanged",
-                        cancellationToken);
-                
+                await NotifyAsync("OrdersChanged");
 
                 return Ok(updatedOrder);
             }
@@ -141,11 +128,35 @@ namespace FastFoodAPI.Controllers
             {
                 return Forbid();
             }
+            catch (OrderConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
-        } 
+        }
+
+        private async Task NotifyAsync(string eventName)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(
+                    TimeSpan.FromSeconds(5));
+
+                await _hubContext.Clients.All.SendAsync(
+                    eventName,
+                    timeout.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Falha ao enviar o evento {EventName}.",
+                    eventName);
+            }
+        }
 
     }
 }

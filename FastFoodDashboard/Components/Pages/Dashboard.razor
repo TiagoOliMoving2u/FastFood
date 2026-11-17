@@ -334,8 +334,8 @@ else{
 
             using var response = await client.SendAsync(request);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
+            if(response.StatusCode == HttpStatusCode.Unauthorized)
+{
                 await SessionExpiredAsync();
                 return;
             }
@@ -346,10 +346,20 @@ else{
                 return;
             }
 
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                await LoadOrders();
+
+                error = "O pedido foi alterado por outro utilizador. " +
+                        "Os dados foram atualizados; verifica o estado antes de continuar.";
+
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 error = $"Não foi possível atualizar o pedido. " +
-                    $"Código HTTP: {(int)response.StatusCode}.";
+                        $"Código HTTP: {(int)response.StatusCode}.";
 
                 return;
             }
