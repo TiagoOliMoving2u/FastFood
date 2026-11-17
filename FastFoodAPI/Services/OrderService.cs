@@ -182,7 +182,7 @@ namespace FastFoodAPI.Services
                 id, cancellationToken);
 
             if (order is null)
-                throw new ArgumentException("Order not found.");
+                throw new KeyNotFoundException("Pedido não encontrado.");
 
             if ((int)order.State != currentState)
                 throw new OrderConflictException();

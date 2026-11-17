@@ -160,6 +160,10 @@ namespace FastFoodAPI.Controllers
             {
                 return Forbid();
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
             catch (OrderConflictException ex)
             {
                 return Conflict(new { message = ex.Message });
