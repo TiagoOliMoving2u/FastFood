@@ -114,14 +114,9 @@ namespace FastFoodDashboard.Services
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
             request.Content = JsonContent.Create(updateUserDetailsRequest);
-            var response = await client.SendAsync(
+            using var response = await client.SendAsync(
                 request, cancellationToken);
-            if (response.StatusCode == HttpStatusCode.Unauthorized ||
-                response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                return response.StatusCode;
-            }
-            response.EnsureSuccessStatusCode();
+
             return response.StatusCode;
         }
 
@@ -138,14 +133,9 @@ namespace FastFoodDashboard.Services
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
             request.Content = JsonContent.Create(new { NewPassword = newPassword });
-            var response = await client.SendAsync(
+            using var response = await client.SendAsync(
                 request, cancellationToken);
-            if (response.StatusCode == HttpStatusCode.Unauthorized ||
-                response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                return response.StatusCode;
-            }
-            response.EnsureSuccessStatusCode();
+
             return response.StatusCode;
         }
     }

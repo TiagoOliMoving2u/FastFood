@@ -31,15 +31,6 @@ public class RoleApiService
         using var response = await client.SendAsync(
             request, cancellationToken);
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized ||
-            response.StatusCode == HttpStatusCode.Forbidden)
-        {
-            return new List<RoleDto>();
-        }
-
-        var content = await response.Content.ReadAsStringAsync(
-        cancellationToken);
-
         response.EnsureSuccessStatusCode();
 
         return await response.Content

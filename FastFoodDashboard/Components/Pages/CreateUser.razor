@@ -5,6 +5,7 @@
 @inject RoleApiService RoleApiService
 @inject AuthApiService AuthApiService
 @inject BrowserAuthStorage BrowserAuthStorage
+@inject ILogger<CreateUser> Logger
 
 @page "/create-user"
 
@@ -42,7 +43,7 @@ else if (rolesLoaded)
 <input @bind="confirmPassword" type="password" />
 <br />
 <select @bind="selectedRole">
-    <option value="0">Selecionar área</option>
+    <option value="0">Selecionar role</option>
     @foreach (var role in roles)
     {
         <option value="@role.Id">@role.Name</option>
@@ -69,24 +70,45 @@ else if (rolesLoaded)
         if (!firstRender)
             return;
 
+        rolesLoaded = false;
+
         try
         {
             var token = await BrowserAuthStorage.GetTokenAsync();
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                error = "Sessão expirada. Faz login novamente.";
+                error = "Sessão indisponível ou expirada. " +
+                        "Inicia sessão novamente.";
                 return;
             }
 
-            await GetRolosAsync();
+            roles = await RoleApiService.GetRolesAsync(token) ?? new();
+
             rolesLoaded = true;
+
+            if (roles.Count == 0)
+                error = "Não existem roles disponíveis.";
         }
         catch (HttpRequestException ex)
         {
-            error = ex.StatusCode == HttpStatusCode.Forbidden
-                ? "Não tens permissão para criar utilizadores."
-                : $"Erro ao carregar roles: {ex.Message}";
+            Logger.LogError(ex, "Erro ao carregar perfis.");
+
+            error = ex.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized =>
+                    "Sessão expirada. Inicia sessão novamente.",
+
+                HttpStatusCode.Forbidden =>
+                    "Não tens permissão para consultar os perfis.",
+
+                _ => "Não foi possível carregar os perfis. Tenta novamente."
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao carregar perfis.");
+            error = "Não foi possível carregar os perfis. Tenta novamente.";
         }
         finally
         {
@@ -95,41 +117,21 @@ else if (rolesLoaded)
         }
     }
 
-    private async Task GetRolosAsync()
-    {
-        try
-        {
-            var token = await BrowserAuthStorage.GetTokenAsync();
-
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                error = "JWT de desenvolvimento não configurado.";
-                return;
-            }
-
-            roles = await RoleApiService.GetRolesAsync(token);
-        }
-        catch (Exception ex)
-        {
-            error = "Erro ao carregar as roles." + ex.ToString();
-        }
-    }
-
     private async Task<bool> ValidateInputs()
     {
         if (string.IsNullOrWhiteSpace(username))
         {
-            error = "Username é obrigatório.";
+            error = "O nome de utilizador é obrigatório.";
             return false;
         }
         else if (string.IsNullOrWhiteSpace(password))
         {
-            error = "Password é obrigatório.";
+            error = "A palavra-passe é obrigatória.";
             return false;
         }
         else if (string.IsNullOrWhiteSpace(confirmPassword))
         {
-            error = "Confirm Password é obrigatório.";
+            error = "Confirma a palavra-passe.";
             return false;
         }
         else if (selectedRole == 0)
@@ -145,20 +147,22 @@ else if (rolesLoaded)
         if (password == confirmPassword)
             return true;
 
-        error = "Passwords não coencidem!";
+        error = "As palavras-passe não coincidem.";
         return false;
     }
 
     private async Task CreateUserAsync()
     {
-        if (!await ConfirmPassowrd() || !await ValidateInputs())
+        error = null;
+        success = null;
+        if (!await ValidateInputs() || !await ConfirmPassowrd())
             return;
         try
         {
             var token = await BrowserAuthStorage.GetTokenAsync();
             if (string.IsNullOrWhiteSpace(token))
             {
-                error = "JWT de desenvolvimento não configurado.";
+                error = "Sessão indisponível ou expirada. Inicia sessão novamente.";
                 return;
             }
             
@@ -171,14 +175,25 @@ else if (rolesLoaded)
 
             Console.WriteLine(roles!.FirstOrDefault(r => r.Id == selectedRole)!.Name);
 
-            await AuthApiService.CreateUserAsync(token, createUserRequest);
+            var created = await AuthApiService.CreateUserAsync(
+                token,
+                createUserRequest);
+
+            if (!created)
+            {
+                error = "A sessão expirou ou não tens permissão para criar utilizadores.";
+                return;
+            }
 
             success = "Utilizador criado com sucesso!";
-            error = "";
+            error = null;
         }
         catch (Exception ex)
         {
-            error = "Erro ao criar o utilizador." + ex.ToString();
+            Logger.LogError(ex, "Erro ao criar utilizador.");
+
+            error = "Não foi possível criar o utilizador. " +
+                    "Verifica os dados e tenta novamente.";
         }
     }
 }
