@@ -25,7 +25,8 @@ builder.Services.AddScoped<MenuItemRepository>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PermissionRepository>();
-builder.Services.AddScoped<RoleRepository>();
+builder.Services.AddScoped<RoleRepository>(); 
+builder.Services.AddScoped<DashboardRepository>();
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -36,6 +37,7 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<PermissionService>();
 
 
