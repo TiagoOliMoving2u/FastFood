@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using FastFoodAPI.Services;
+﻿using FastFoodAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FastFoodAPI.Controllers
 {
@@ -12,6 +13,7 @@ namespace FastFoodAPI.Controllers
         {
             _dashboardService = dashboardService;
         }
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetDashboards(CancellationToken cancellationToken)
         {
