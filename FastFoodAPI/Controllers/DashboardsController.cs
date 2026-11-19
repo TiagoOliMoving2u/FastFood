@@ -17,7 +17,7 @@ namespace FastFoodAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboards(CancellationToken cancellationToken)
         {
-            var dashboards = await _dashboardService.GetAllDashboards(cancellationToken);
+            var dashboards = await _dashboardService.GetAllDashboards(User,cancellationToken);
             return Ok(dashboards);
         }
     }

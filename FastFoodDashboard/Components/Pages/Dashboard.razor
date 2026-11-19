@@ -1,4 +1,4 @@
-﻿@page "/dashboard/{View?}"
+@page "/dashboard/{View?}"
 @using System.Net
 @using System.Net.Http.Headers
 @using System.Net.Http.Json
@@ -6,15 +6,13 @@
 @using FastFoodDashboard.Services
 @using Microsoft.AspNetCore.Hosting
 @using DashboardModel = FastFoodDashboard.Models.Dashboard
-@inject IConfiguration Configuration
 @inject IWebHostEnvironment HostEnvironment
 @inject IHttpClientFactory HttpClientFactory
 @inject BrowserAuthStorage BrowserAuthStorage
-@inject AuthApiService AuthApiService
 @inject NavigationManager Navigation
 @inject SignalRService SignalRService
-@inject PermissionApiService PermissionApiService
 @inject DashboardApiService DashboardApiService
+@inject PermissionApiService PermissionApiService
 @implements IAsyncDisposable
 
 
@@ -27,7 +25,7 @@
         </NavLink>
         <text>&nbsp;</text>
     }
-    
+
 </nav>
 
 
@@ -42,11 +40,7 @@ else{
     {
         <p>A verificar permissões...</p>
     }
-    else if (!canAccess)
-    {
-        <p>Não tens permissão para aceder a este dashboard.</p>
-        <a href="/login">Ir para o login</a>
-    }
+
     else
     {
 
@@ -106,7 +100,7 @@ else{
                                         <p>@order.AreaName</p>
                                     }
                                     @foreach (var item in order.Items){
-                                
+
                                         <p>@item.ToString()</p>
                                     }
 
@@ -151,7 +145,6 @@ else{
 
     private HashSet<string> userPermissions = new(StringComparer.OrdinalIgnoreCase);
 
-    private IDisposable? ordersChangedHandler;
 
     private string connectionStatus = "A iniciar...";
 
@@ -159,77 +152,37 @@ else{
     private string? error;
 
     private bool accessChecked;
-    private bool canAccess;
     private bool checkingAccess;
     private string? checkedView;
 
     private IEnumerable<(int Id, string Name)> VisibleStates =>
     states.Where(s => dashboardConfig?.VisibleStates.Contains(s.Id) == true);
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnParametersSet()
     {
-        
-        var selectedView = (View ?? "sala")
-            .Trim()
-            .ToLowerInvariant();
 
-        dashboardConfig = selectedView switch
+        var view = string.IsNullOrWhiteSpace(View)
+    ? dashboards.FirstOrDefault()?.Slug
+    : View.Trim();
+
+        if (checkedView != view)
         {
-            "sala" => new DashboardConfig
-            {
-                Title = "Dashboard - Sala",
-                AreaId = 1,
-                VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false
-            },
+            accessChecked = false;
 
-            "esplanada" => new DashboardConfig
-            {
-                Title = "Dashboard - Esplanada",
-                AreaId = 2,
-                VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = false
-            },
-
-            "cozinha" => new DashboardConfig
-            {
-                Title = "Dashboard - Cozinha",
-                AreaId = null,
-                VisibleStates = [1, 2, 3],
-                ShowAreaName = true
-            },
-            "balcao" => new DashboardConfig
-            {
-    Title = "Dashboard - Balcão",
-                AreaId = null,
-                VisibleStates = [1, 2, 3, 4],
-                ShowAreaName = true
-            },
-            _ => null
-        };
+        }
 
         orders.Clear();
         error = null;
 
-        if (dashboardConfig is null)
-        {
-            error = "Dashboard não encontrado.";
-            return;
-        }
-
-        var currentView = (View ?? "sala").Trim().ToLowerInvariant();
-
-        if (checkedView != currentView)
-        {
-            accessChecked = false;
-            canAccess = false;
-        }
+        SelectDashboard();
 
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var view = (View ?? "sala").Trim().ToLowerInvariant();
+        var view = string.IsNullOrWhiteSpace(View)
+    ? dashboards.FirstOrDefault()?.Slug
+    : View.Trim();
 
         // Evitar verificações repetidas
         if (checkingAccess ||
@@ -238,32 +191,28 @@ else{
 
         checkingAccess = true;
         accessChecked = false;
-        canAccess = false;
 
         try
         {
             if (firstRender)
             {
                 await GetDashboards();
+                SelectDashboard();
             }
 
             // Terminar uma eventual ligação anterior
             await DisposeAsync();
 
-            // Validar a Role através da FastFoodAPI
-            var allowed = await CanAccessDashboardAsync(view);
+            if (dashboardConfig is null)
+            {
+                error ??= "Dashboard inexistente ou sem acesso.";
+                connectionStatus = "Dashboard indisponível.";
+                return;
+            }
 
             // A página pode ter mudado durante a validação
             if (view != (View ?? "sala").Trim().ToLowerInvariant())
                 return;
-
-            canAccess = allowed;
-
-            if (!allowed)
-            {
-                connectionStatus = "Acesso não autorizado.";
-                return;
-            }
 
             // Carregar apenas pedidos de um dashboard autorizado
             await LoadOrders();
@@ -277,18 +226,22 @@ else{
         }
         catch (HttpRequestException)
         {
-            canAccess = false;
+
             connectionStatus = "Erro de comunicação com a API.";
         }
         catch (TaskCanceledException)
         {
-            canAccess = false;
+
             connectionStatus = "A ligação à API expirou.";
         }
         finally
         {
+            var slug = string.IsNullOrWhiteSpace(View)
+                ? dashboards.FirstOrDefault()?.Slug
+                : View.Trim();
+
             // Só guardar a validação para a página atual
-            if (view == (View ?? "sala").Trim().ToLowerInvariant())
+            if (view == (View ?? slug).Trim().ToLowerInvariant())
             {
                 checkedView = view;
                 accessChecked = true;
@@ -296,13 +249,41 @@ else{
             else
             {
                 checkedView = null;
-                canAccess = false;
+
                 accessChecked = false;
             }
 
             checkingAccess = false;
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void SelectDashboard()
+    {
+        var slug = string.IsNullOrWhiteSpace(View)
+        ? dashboards.FirstOrDefault()?.Slug
+        : View.Trim();
+
+        var dashboard = dashboards.FirstOrDefault(d =>
+            d.IsActive == 1 &&
+            string.Equals(
+                d.Slug,
+                slug,
+                StringComparison.OrdinalIgnoreCase));
+
+        dashboardConfig = dashboard is null
+            ? null
+            : new DashboardConfig
+            {
+                Title = $"Dashboard - {dashboard.Name}",
+                AreaId = dashboard.AreaId,
+                VisibleStates = dashboard.ShowStates
+                    .Select(s => s.State)
+                    .Distinct()
+                    .OrderBy(state => state)
+                    .ToArray(),
+                ShowAreaName = dashboard.AreaId is null
+            };
     }
 
     private readonly (int Id, string Name)[] states =
@@ -449,68 +430,10 @@ else{
         Navigation.NavigateTo("/login", forceLoad: true);
     }
 
-    private async Task<bool> CanAccessDashboardAsync(string view)
-    {
-        var dashboard = (view ?? "")
-        .Trim()
-        .ToLowerInvariant();
-
-        if (dashboard is "sala" or "esplanada")
-            return true;
-
-        string? requiredPermission = dashboard switch
-        {
-            "cozinha" => "dashboards.kitchen.view",
-            "balcao" => "dashboards.counter.view",
-            _ => null
-        };
-
-        if (requiredPermission is null)
-            return false;
-
-        // Recuperar o JWT
-        var token = await BrowserAuthStorage.GetTokenAsync();
-
-        if (string.IsNullOrWhiteSpace(token))
-            return false;
-
-        try
-        {
-            var permissions =
-                await PermissionApiService.GetMyPermissionsAsync(token);
-
-            userPermissions = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            return userPermissions.Contains(requiredPermission);
-        }
-        catch (HttpRequestException ex)
-        when (ex.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            await SessionExpiredAsync();
-            return false;
-        }
-        catch (HttpRequestException)
-        {
-            return false;
-        }
-
-    }
-
     private bool CanChangeOrderState(
         OrderDto order,
         int operation)
     {
-        // Apenas dashboards internos podem alterar pedidos
-        var dashboard = (View ?? "")
-            .Trim()
-            .ToLowerInvariant();
-
-        if (!canAccess ||
-            dashboard is not ("cozinha" or "balcao"))
-        {
-            return false;
-        }
-
         if (operation is not (1 or -1))
             return false;
 
@@ -524,6 +447,8 @@ else{
         // Construir o código da permissão necessária
         string permissionCode =
             $"orders.transition.{currentState}.{nextState}";
+
+        Console.WriteLine($"Verificando permissão: {permissionCode}");
 
         // Verificar se o utilizador tem essa permissão
         return userPermissions.Contains(permissionCode);
@@ -550,7 +475,7 @@ else{
 
                 onEvent: () => InvokeAsync(async () =>
                 {
-                    if (!canAccess || checkedView != view)
+                    if (checkedView != view)
                         return;
 
                     await LoadOrders();
@@ -561,7 +486,7 @@ else{
 
                 onReconnected: () => InvokeAsync(async () =>
                 {
-                    if (!canAccess || checkedView != view)
+                    if (checkedView != view)
                         return;
 
                     await LoadOrders();
@@ -583,11 +508,6 @@ else{
         }
     }
 
-    private Task StopSignalRAsync()
-    {
-        return SignalRService.StopAsync();
-    }
-
     public async ValueTask DisposeAsync()
     {
         await SignalRService.StopAsync();
@@ -605,6 +525,16 @@ else{
                 await SessionExpiredAsync();
                 return;
             }
+
+            dashboards = await DashboardApiService.GetAllDashboards(token);
+
+            userPermissions.Clear();
+
+            var permissions =
+                await PermissionApiService.GetMyPermissionsAsync(token);
+
+            userPermissions = permissions.ToHashSet(
+                StringComparer.OrdinalIgnoreCase);
 
             dashboards = await DashboardApiService.GetAllDashboards(token);
         }
