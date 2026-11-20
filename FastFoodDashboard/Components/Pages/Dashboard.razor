@@ -29,11 +29,20 @@
 </nav>
 
 
-@if (Expired)
+@if (requiresLogin)
+{
+    <p>Inicia sessão para consultar os dashboards.</p>
+    <a class="btn btn-primary" href="/login">
+        Ir para o login
+    </a>
+}
+else if (Expired)
 {
     <p class="text-warning">
         A tua sessão expirou. Inicia sessão novamente.
     </p>
+
+    <a href="/login">Ir para o login</a>
 }
 else{
     @if (!accessChecked)
@@ -151,6 +160,7 @@ else{
     private bool loading;
     private string? error;
 
+    private bool requiresLogin;
     private bool accessChecked;
     private bool checkingAccess;
     private string? checkedView;
@@ -180,9 +190,12 @@ else{
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (requiresLogin)
+            return;
+
         var view = string.IsNullOrWhiteSpace(View)
-    ? dashboards.FirstOrDefault()?.Slug
-    : View.Trim();
+            ? dashboards.FirstOrDefault()?.Slug
+            : View.Trim();
 
         // Evitar verificações repetidas
         if (checkingAccess ||
@@ -197,6 +210,10 @@ else{
             if (firstRender)
             {
                 await GetDashboards();
+
+                if (requiresLogin)
+                    return;
+
                 SelectDashboard();
             }
 
@@ -236,25 +253,34 @@ else{
         }
         finally
         {
-            var slug = string.IsNullOrWhiteSpace(View)
-                ? dashboards.FirstOrDefault()?.Slug
-                : View.Trim();
-
-            // Só guardar a validação para a página atual
-            if (view == (View ?? slug).Trim().ToLowerInvariant())
+            if (!requiresLogin)
             {
-                checkedView = view;
-                accessChecked = true;
-            }
-            else
-            {
-                checkedView = null;
+                var slug = string.IsNullOrWhiteSpace(View)
+                    ? dashboards.FirstOrDefault()?.Slug
+                    : View.Trim();
 
-                accessChecked = false;
+                var currentView = (View ?? slug)?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(view) &&
+                    !string.IsNullOrWhiteSpace(currentView) &&
+                    string.Equals(
+                        view,
+                        currentView,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    checkedView = view;
+                    accessChecked = true;
+                }
+                else
+                {
+                    checkedView = null;
+                    accessChecked = false;
+                }
             }
 
             checkingAccess = false;
             await InvokeAsync(StateHasChanged);
+            
         }
     }
 
@@ -317,7 +343,6 @@ else{
             var client = HttpClientFactory
                 .CreateClient("FastFoodApi");
 
-            // Mantém o formato que já funciona no teu endpoint
             string endpoint = $"api/orders/{id}?operation={operation}&currentState={currentState}";
 
             using var request = new HttpRequestMessage(
@@ -448,7 +473,7 @@ else{
         string permissionCode =
             $"orders.transition.{currentState}.{nextState}";
 
-        Console.WriteLine($"Verificando permissão: {permissionCode}");
+        //Console.WriteLine($"Verificando permissão: {permissionCode}");
 
         // Verificar se o utilizador tem essa permissão
         return userPermissions.Contains(permissionCode);
@@ -457,13 +482,19 @@ else{
 
     private async Task SessionExpiredAsync()
     {
+        requiresLogin = true;
+
+        dashboards = Array.Empty<DashboardModel>();
+        dashboardConfig = null;
+        orders.Clear();
+        userPermissions.Clear();
+
+        checkedView = null;
+        accessChecked = true;
+        loading = false;
+
         await BrowserAuthStorage.LogoutAsync();
-
-        await DisposeAsync();
-
-        Navigation.NavigateTo(
-            "/login?expired=true",
-            forceLoad: true);
+        await SignalRService.StopAsync();
     }
 
     private async Task StartSignalRAsync(string view)
@@ -521,12 +552,9 @@ else{
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                error = "JWT de desenvolvimento não configurado.";
                 await SessionExpiredAsync();
                 return;
             }
-
-            dashboards = await DashboardApiService.GetAllDashboards(token);
 
             userPermissions.Clear();
 
@@ -537,6 +565,11 @@ else{
                 StringComparer.OrdinalIgnoreCase);
 
             dashboards = await DashboardApiService.GetAllDashboards(token);
+        }
+        catch (HttpRequestException ex)
+        when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await SessionExpiredAsync();
         }
         catch (HttpRequestException ex)
         {
