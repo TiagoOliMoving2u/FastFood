@@ -1,0 +1,139 @@
+﻿
+.user-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-trigger {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+    .user-trigger:hover,
+    .user-trigger:focus-visible {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #991b1b;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+    .user-details strong {
+        font-size: 14px;
+        color: #111827;
+    }
+
+    .user-details small {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+.user-chevron {
+    color: #64748b;
+    font-size: 20px;
+    margin-left: 6px;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 240px;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.dropdown-user {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+}
+
+    .dropdown-user strong {
+        font-size: 14px;
+        color: #111827;
+    }
+
+    .dropdown-user small {
+        color: #6b7280;
+        font-size: 12px;
+    }
+
+.dropdown-separator {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
+}
+
+.logout-button {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #b91c1c;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+    .logout-button:hover {
+        background: #fef2f2;
+    }
+
+.login-button {
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: #991b1b;
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+    .login-button:hover {
+        background: #7f1d1d;
+        color: white;
+    }
+
+.session-loading {
+    font-size: 13px;
+    color: #64748b;
+}
+
+@media (max-width: 576px) {
+    .user-details {
+        display: none;
+    }
+
+    .user-trigger {
+        padding: 5px;
+    }
+}

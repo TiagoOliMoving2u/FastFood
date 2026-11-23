@@ -1,0 +1,156 @@
+﻿@using System.Net
+@using Microsoft.AspNetCore.Components.Routing
+@using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
+
+@inject BrowserAuthStorage BrowserAuthStorage
+@inject AuthApiService AuthApiService
+@inject NavigationManager Navigation
+
+@implements IDisposable
+@rendermode InteractiveServer
+
+<div class="user-menu">
+
+    @if (loading)
+    {
+        <span class="session-loading">
+            A verificar sessão...
+        </span>
+    }
+    else if (currentUser is null)
+    {
+        <a href="/login" class="login-button">
+            Entrar
+        </a>
+    }
+    else
+    {
+        <button type="button"
+                class="user-trigger"
+                aria-label="Abrir menu de utilizador"
+                aria-expanded="@menuOpen"
+                @onclick="ToggleMenu">
+
+            <span class="user-avatar">
+                @AvatarInitial
+            </span>
+
+            <span class="user-details">
+                <strong>@currentUser.Username</strong>
+                <small>@currentUser.Role</small>
+            </span>
+
+            <span class="user-chevron">⌄</span>
+        </button>
+
+        @if (menuOpen)
+        {
+            <div class="user-dropdown">
+
+                <div class="dropdown-user">
+                    <strong>@currentUser.Username</strong>
+                    <small>@currentUser.Role</small>
+                </div>
+
+                <div class="dropdown-separator"></div>
+
+                <button type="button"
+                        class="logout-button"
+                        @onclick="LogoutAsync">
+                    Terminar sessão
+                </button>
+
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+    private CurrentUserResponse? currentUser;
+
+    private bool loading = true;
+    private bool menuOpen;
+
+    private string AvatarInitial =>
+        string.IsNullOrWhiteSpace(currentUser?.Username)
+            ? "?"
+            : currentUser.Username[..1].ToUpperInvariant();
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await LoadUserAsync();
+    }
+
+    private async Task LoadUserAsync()
+    {
+        loading = true;
+        menuOpen = false;
+
+        try
+        {
+            var token = await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                currentUser = null;
+                return;
+            }
+
+            currentUser =
+                await AuthApiService.GetCurrentUserAsync(token);
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            currentUser = null;
+            await BrowserAuthStorage.LogoutAsync();
+        }
+        catch (HttpRequestException)
+        {
+            currentUser = null;
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleMenu()
+    {
+        menuOpen = !menuOpen;
+    }
+
+    private async Task LogoutAsync()
+    {
+        menuOpen = false;
+
+        await BrowserAuthStorage.LogoutAsync();
+
+        currentUser = null;
+
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    private void OnLocationChanged(
+        object? sender,
+        LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(LoadUserAsync);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

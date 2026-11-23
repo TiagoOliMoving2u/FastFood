@@ -96,3 +96,32 @@ main {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+
+.ff-topbar {
+    min-height: 76px;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.ff-topbar-title {
+    display: flex;
+    flex-direction: column;
+}
+
+    .ff-topbar-title strong {
+        font-size: 17px;
+        color: #111827;
+    }
+
+    .ff-topbar-title span {
+        font-size: 12px;
+        color: #6b7280;
+    }

@@ -1,0 +1,328 @@
+﻿@page "/admin"
+
+@using FastFoodDashboard.Models
+@using FastFoodDashboard.Services
+
+@inject AuthApiService AuthApiService
+@inject RoleApiService RoleApiService
+@inject PermissionApiService PermissionApiService
+@inject BrowserAuthStorage BrowserAuthStorage
+
+<PageTitle>Administração - FastFood</PageTitle>
+
+<div class="container py-4" style="max-width: 1250px;">
+
+    <!-- Cabeçalho -->
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Administração</h2>
+        <p class="text-muted">
+            Gestão de utilizadores, Roles e permissões.
+        </p>
+    </div>
+
+    @if (loading)
+    {
+        <p>A carregar dados administrativos...</p>
+    }
+    else if (error is not null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else if (!canViewUsers && !canViewRoles)
+    {
+        <div class="alert alert-warning">
+            Não tens permissão para aceder à administração.
+        </div>
+    }
+    else
+    {
+        <!-- Indicadores -->
+        <div class="row g-3 mb-4">
+
+            @if (canViewUsers)
+            {
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <p class="text-muted mb-2">
+                                Total de utilizadores
+                            </p>
+                            <h2 class="fw-bold mb-0">
+                                @users.Count
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <p class="text-muted mb-2">
+                                Utilizadores ativos
+                            </p>
+                            <h2 class="fw-bold text-success mb-0">
+                                @users.Count(u => u.IsActive == 1)
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (canViewRoles)
+            {
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <p class="text-muted mb-2">
+                                Roles registadas
+                            </p>
+                            <h2 class="fw-bold mb-0">
+                                @roles.Count
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+
+        <!-- Gestão de utilizadores e Roles -->
+        <div class="row g-4">
+
+            @if (canViewUsers)
+            {
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm h-100">
+
+                        <div class="card-header bg-transparent
+                            d-flex justify-content-between
+                            align-items-center py-3">
+
+                            <h5 class="mb-0">
+                                Utilizadores
+                            </h5>
+
+                            <a href="/admin/users"
+                               class="btn btn-sm btn-outline-primary">
+                                Ver todos
+                            </a>
+                        </div>
+
+                        <div class="card-body p-0">
+
+                            <div class="table-responsive">
+                                <table class="table table-hover
+                                    align-middle mb-0">
+
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th>Estado</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach (var user in users
+                                            .OrderByDescending(u => u.Id)
+                                            .Take(5))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">
+                                                    @user.Username
+                                                </td>
+
+                                                <td>@user.RoleName</td>
+
+                                                <td>
+                                                    @if (user.IsActive == 1)
+                                                    {
+                                                        <span class="badge bg-success">
+                                                            Ativo
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">
+                                                            Inativo
+                                                        </span>
+                                                    }
+                                                </td>
+
+                                                <td>
+                                                    @if (canManageUsers)
+                                                    {
+                                                        <a href="@($"/edit-user?userId={user.Id}")"
+                                                           class="btn btn-sm btn-outline-secondary">
+                                                            Editar
+                                                        </a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            @if (users.Count == 0)
+                            {
+                                <p class="text-muted p-3">
+                                    Não existem utilizadores.
+                                </p>
+                            }
+
+                        </div>
+
+                        @if (canManageUsers)
+                        {
+                            <div class="card-footer bg-transparent p-3">
+                                <a href="/create-user"
+                                   class="btn btn-primary">
+                                    + Criar utilizador
+                                </a>
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            }
+
+            @if (canViewRoles)
+            {
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm h-100">
+
+                        <div class="card-header bg-transparent
+                            d-flex justify-content-between
+                            align-items-center py-3">
+
+                            <h5 class="mb-0">Roles</h5>
+
+                            <a href="/admin/roles"
+                               class="btn btn-sm btn-outline-primary">
+                                Ver todas
+                            </a>
+                        </div>
+
+                        <div class="card-body">
+
+                            @if (roles.Count == 0)
+                            {
+                                <p class="text-muted">
+                                    Não existem Roles.
+                                </p>
+                            }
+                            else
+                            {
+                                <div class="list-group list-group-flush">
+
+                                    @foreach (var role in roles.Take(6))
+                                    {
+                                        <div class="list-group-item
+                                            d-flex justify-content-between
+                                            align-items-center px-0">
+
+                                            <span class="fw-semibold">
+                                                @role.Name
+                                            </span>
+
+                                            @if (canManageRoles)
+                                            {
+                                                <a href="@($"/edit-role?roleId={role.Id}")"
+                                                   class="btn btn-sm btn-outline-secondary">
+                                                    Editar
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+
+                                </div>
+                            }
+
+                        </div>
+
+                        @if (canManageRoles)
+                        {
+                            <div class="card-footer bg-transparent p-3">
+                                <a href="/create-role"
+                                   class="btn btn-primary">
+                                    + Criar Role
+                                </a>
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            }
+
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<UserResponse> users = new List<UserResponse>();
+    private List<RoleDto> roles = new();
+
+    private bool loading = true;
+
+    private bool canViewUsers;
+    private bool canManageUsers;
+
+    private bool canViewRoles;
+    private bool canManageRoles;
+
+    private string? error;
+
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var token =
+                await BrowserAuthStorage.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Sessão expirada. Faz login novamente.";
+                return;
+            }
+
+            // Consultar permissões do utilizador
+            var permissions =
+                await PermissionApiService.GetMyPermissionsAsync(
+                    token);
+
+            canViewUsers = permissions.Contains("users.view");
+            canManageUsers = permissions.Contains("users.manage");
+            //canCreateUsers = permissions.Contains("users.create");
+
+            canViewRoles = permissions.Contains("roles.view");
+            canManageRoles = permissions.Contains("roles.manage");
+
+            // Consultar utilizadores
+            if (canViewUsers)
+            {
+                users = await AuthApiService.GetAllUsersAsync(token);
+            }
+
+            // Consultar Roles
+            if (canViewRoles)
+            {
+                roles = await RoleApiService.GetRolesAsync(token);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = $"Erro ao carregar dados: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

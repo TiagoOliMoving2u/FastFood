@@ -27,7 +27,7 @@ public class BrowserAuthStorage
 
         await _storage.SetAsync(Key, data);
     }
-
+    
     public async Task<string?> GetTokenAsync()
     {
         try
