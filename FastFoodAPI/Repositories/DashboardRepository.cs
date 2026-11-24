@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using FastFoodAPI.Data;
+using FastFoodAPI.DTOs;
 using FastFoodAPI.Models;
 using System.Security.Claims;
 
@@ -64,6 +65,21 @@ namespace FastFoodAPI.Repositories
             }
 
             return dashboards.ToList();
+        }
+
+        public async Task<bool> CreateDashboardAsync(CreateDashboardRequest dashboard, CancellationToken cancellationToken)
+        {
+            using var connection = _factory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                INSERT INTO Dashboards (Name, Slug, IsActive, AreaId)
+                VALUES (@Name, @Slug, @IsActive, @AreaId);
+                SELECT CAST(SCOPE_IDENTITY() as int);
+                """;
+            var command = new CommandDefinition(sql, dashboard, cancellationToken: cancellationToken);
+            var newDashboardId = await connection.ExecuteScalarAsync<int>(command);
+            //dashboard.Id = newDashboardId;
+            return true;
         }
     }
 }

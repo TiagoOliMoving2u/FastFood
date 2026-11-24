@@ -1,4 +1,6 @@
-﻿using FastFoodAPI.Services;
+﻿using FastFoodAPI.DTOs;
+using FastFoodAPI.Models;
+using FastFoodAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +21,14 @@ namespace FastFoodAPI.Controllers
         {
             var dashboards = await _dashboardService.GetAllDashboards(User,cancellationToken);
             return Ok(dashboards);
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> CreateDashboard([FromBody] CreateDashboardRequest dashboard, CancellationToken cancellationToken)
+        {
+            var createdDashboard = await _dashboardService.CreateDashboardAsync(dashboard, cancellationToken);
+            return Ok(createdDashboard);
         }
     }
 }

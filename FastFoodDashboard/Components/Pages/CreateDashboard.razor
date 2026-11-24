@@ -1,0 +1,314 @@
+﻿@page "/admin/dashboards/create"
+
+<PageTitle>Criar Dashboard</PageTitle>
+
+<div class="container py-4" style="max-width: 950px;">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between
+        align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">Criar Dashboard</h2>
+
+            <p class="text-muted mb-0">
+                Configura um novo dashboard para o restaurante.
+            </p>
+        </div>
+
+        <a href="/admin/dashboards"
+           class="btn btn-outline-secondary">
+            Voltar
+        </a>
+    </div>
+
+    @if (message is not null)
+    {
+        <div class="alert alert-info">
+            @message
+        </div>
+    }
+
+    <!-- Informações gerais -->
+    <div class="card shadow-sm rounded-3 mb-4">
+
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0">Informações gerais</h5>
+        </div>
+
+        <div class="card-body p-4">
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">
+                    Nome do Dashboard
+                </label>
+
+                <input class="form-control"
+                       placeholder="Ex.: Drive-Thru"
+                       maxlength="100"
+                       @bind="dashboardName"
+                       @bind:event="oninput" />
+
+                <div class="form-text">
+                    Nome apresentado no cabeçalho do dashboard.
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Tipo de Dashboard
+                </label>
+
+                <select class="form-select"
+                        @bind="dashboardType"
+                        @bind:after="OnTypeChanged">
+
+                    <option value="area">
+                        Dashboard de Área
+                    </option>
+
+                    <option value="operational">
+                        Dashboard Operacional
+                    </option>
+                </select>
+
+                <div class="form-text">
+                    Um dashboard de área apresenta os pedidos
+                    de uma área específica. Um dashboard operacional
+                    pode apresentar pedidos de todas as áreas.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visibilidade e acesso -->
+    <div class="card shadow-sm rounded-3 mb-4">
+
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0">Visibilidade e acesso</h5>
+        </div>
+
+        <div class="card-body p-4">
+
+            <div class="d-flex justify-content-between
+                align-items-center mb-3">
+
+                <div>
+                    <label class="fw-semibold">
+                        Dashboard público
+                    </label>
+
+                    <p class="text-muted small mb-0">
+                        Permite visualizar o dashboard
+                        sem iniciar sessão.
+                    </p>
+                </div>
+
+                <div class="form-check form-switch">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           role="switch"
+                           style="width: 2.8em; height: 1.4em;"
+                           @bind="isPublic"
+                           disabled="@(dashboardType != "area")" />
+                </div>
+            </div>
+
+            @if (isPublic)
+            {
+                <div class="alert alert-info mb-0">
+                    Este dashboard será público e apenas
+                    de consulta. Não permitirá alterar
+                    os estados dos pedidos.
+                </div>
+            }
+            
+
+        </div>
+    </div>
+
+    <!-- Estados visíveis -->
+    <div class="card shadow-sm rounded-3 mb-4">
+
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0">Estados visíveis</h5>
+        </div>
+
+        <div class="card-body p-4">
+
+            <p class="text-muted small">
+                Escolhe quais os estados dos pedidos
+                que serão apresentados neste dashboard.
+            </p>
+
+            <div class="row g-3">
+
+                @foreach (var state in states)
+                {
+                    <div class="col-md-6" @key="state.Id">
+
+                        <div class="border rounded-3 p-3">
+
+                            <div class="form-check">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="@($"state-{state.Id}")"
+                                       checked="@selectedStates.Contains(state.Id)"
+                                       @onchange="e => ToggleState(state.Id, e)" />
+
+                                <label class="form-check-label"
+                                       for="@($"state-{state.Id}")">
+                                    @state.Name
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="card bg-light border-0 rounded-3 mb-4">
+
+        <div class="card-body p-4">
+
+            <h6 class="fw-semibold mb-3">
+                Resumo da configuração
+            </h6>
+
+            <p class="mb-2">
+                <strong>Nome:</strong>
+                @(string.IsNullOrWhiteSpace(dashboardName)
+                    ? "Não definido"
+                    : dashboardName)
+            </p>
+
+            <p class="mb-2">
+                <strong>Tipo:</strong>
+                @(dashboardType == "area"
+                    ? "Dashboard de Área"
+                    : "Dashboard Operacional")
+            </p>
+
+            <p class="mb-2">
+                <strong>Acesso:</strong>
+                @(isPublic ? "Público" : "Privado")
+            </p>
+
+            <p class="mb-0">
+                <strong>Estados visíveis:</strong>
+                @selectedStates.Count
+            </p>
+
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="d-flex justify-content-end gap-2">
+
+        <a href="/admin/dashboards"
+           class="btn btn-outline-secondary">
+            Cancelar
+        </a>
+
+        <button class="btn btn-primary px-4"
+                disabled="@(!CanCreate)"
+                @onclick="CreateDashboardAsync">
+
+            Criar Dashboard
+        </button>
+
+    </div>
+</div>
+
+@code {
+
+    // Dados do formulário
+    private string dashboardName = string.Empty;
+    private string dashboardType = "area";
+
+    private int selectedAreaId;
+    private bool isPublic;
+
+    private HashSet<int> selectedRoleIds = new();
+
+    private HashSet<int> selectedStates =
+        new() { 1, 2, 3, 4 };
+
+    private string? message;
+
+    // Dados ilustrativos: substituir pelos dados da API
+    private List<AreaOption> areas = new()
+    {
+        new(1, "Sala"),
+        new(2, "Esplanada")
+    };
+
+    private List<RoleOption> roles = new()
+    {
+        new(1, "Kitchen"),
+        new(2, "Counter"),
+        new(3, "KitchenSupervisor"),
+        new(4, "Manager")
+    };
+
+    private List<StateOption> states = new()
+    {
+        new(1, "Pedido"),
+        new(2, "Em curso"),
+        new(3, "Aguarda levantamento"),
+        new(4, "Entregue")
+    };
+
+    private bool CanCreate =>
+        !string.IsNullOrWhiteSpace(dashboardName)
+        && (dashboardType != "area" || selectedAreaId > 0)
+        && selectedStates.Count > 0
+        && (isPublic || selectedRoleIds.Count > 0);
+
+    private void OnTypeChanged()
+    {
+        if (dashboardType == "operational")
+        {
+            selectedAreaId = 0;
+            isPublic = false;
+        }
+    }
+
+    private void ToggleRole(int roleId, ChangeEventArgs e)
+    {
+        if (e.Value is bool checkedValue && checkedValue)
+            selectedRoleIds.Add(roleId);
+        else
+            selectedRoleIds.Remove(roleId);
+    }
+
+    private void ToggleState(int stateId, ChangeEventArgs e)
+    {
+        if (e.Value is bool checkedValue && checkedValue)
+            selectedStates.Add(stateId);
+        else
+            selectedStates.Remove(stateId);
+    }
+
+    private Task CreateDashboardAsync()
+    {
+        // TODO: ligar ao POST /api/dashboards
+        // e enviar a configuração selecionada.
+
+        message = "O formulário está preparado. Falta ligar à API.";
+
+        return Task.CompletedTask;
+    }
+
+    private record AreaOption(int Id, string Name);
+    private record RoleOption(int Id, string Name);
+    private record StateOption(int Id, string Name);
+}

@@ -1,4 +1,5 @@
-﻿using FastFoodAPI.Models;
+﻿using FastFoodAPI.DTOs;
+using FastFoodAPI.Models;
 using FastFoodAPI.Repositories;
 using System.Security.Claims;
 
@@ -64,6 +65,20 @@ namespace FastFoodAPI.Services
             }
 
             return selectedDashboards;
+        }
+
+        public async Task<bool> CreateDashboardAsync(CreateDashboardRequest dashboard, CancellationToken cancellationToken)
+        {
+            if (dashboard == null)
+                throw new ArgumentNullException(nameof(dashboard));
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(dashboard.Name))
+                throw new ArgumentException("Dashboard name is required.");
+            if (string.IsNullOrWhiteSpace(dashboard.Slug))
+                throw new ArgumentException("Dashboard slug is required.");
+            // Additional validation logic can be added here
+            var createdDashboard = await _dashboardRepository.CreateDashboardAsync(dashboard, cancellationToken);
+            return true;
         }
     }
 }
